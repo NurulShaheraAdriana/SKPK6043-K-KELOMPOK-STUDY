@@ -92,9 +92,13 @@
         .answer-text { font-size: 1.15em; color: #00b894; font-weight: 500; line-height: 1.5; }
 
         /* --- EXAM STYLES --- */
-        .exam-card {
+        .exam-setup {
             background-color: white; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.08);
             padding: 30px; text-align: center; max-width: 650px; margin: 0 auto;
+        }
+        .exam-card {
+            background-color: white; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            padding: 30px; text-align: center; max-width: 650px; margin: 0 auto; display: none;
         }
         .options-container { display: flex; flex-direction: column; gap: 12px; margin-top: 25px; }
         .option-btn {
@@ -107,7 +111,19 @@
         .option-btn.wrong { background-color: #fff5f5 !important; border-color: #fa5252 !important; color: #8b0000 !important; }
         .option-btn:disabled { cursor: not-allowed; opacity: 0.8; }
         .feedback { margin-top: 20px; font-weight: bold; font-size: 1.1em; min-height: 30px; }
-        .score-display { margin-top: 20px; font-weight: bold; color: #2d3436; background: #dfe6e9; padding: 10px 20px; border-radius: 8px; display: inline-block; }
+        
+        .exam-stats {
+            display: flex; justify-content: space-between; margin-top: 20px;
+            background: #dfe6e9; padding: 10px 20px; border-radius: 8px; font-weight: bold; color: #2d3436;
+        }
+        
+        /* Setup Buttons */
+        .q-btn-group { display: flex; justify-content: center; gap: 10px; margin-top: 20px; flex-wrap: wrap;}
+        .q-btn {
+            background-color: #e17055; color: white; border: none; padding: 10px 20px;
+            border-radius: 6px; font-size: 1em; cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        .q-btn:hover { background-color: #d63031; transform: translateY(-2px); }
 
         /* --- SUMMARY STYLES --- */
         .summary-container {
@@ -180,7 +196,7 @@
         </div>
 
         <div id="section-summary" class="study-section active">
-            <p style="text-align:center; color:#636e72; margin-bottom: 20px;">Senarai penuh soalan dan jawapan untuk topik ini.</p>
+            <p style="text-align:center; color:#636e72; margin-bottom: 20px;">Senarai penuh 30 soalan dan jawapan untuk topik ini.</p>
             <div class="summary-container" id="summary-content">
                 </div>
         </div>
@@ -207,8 +223,20 @@
         </div>
 
         <div id="section-exam" class="study-section">
-            <div class="exam-card">
-                <div class="tag" style="background-color: #e17055; color: white;">Ujian Pemahaman</div>
+            
+            <div id="exam-setup" class="exam-setup">
+                <h3 style="color: #2d3436;">Tetapan Ujian</h3>
+                <p style="color: #636e72;">Berapa soalan yang anda mahu jawab untuk topik ini?</p>
+                <div class="q-btn-group">
+                    <button class="q-btn" onclick="startExam(15)">15 Soalan</button>
+                    <button class="q-btn" onclick="startExam(20)">20 Soalan</button>
+                    <button class="q-btn" onclick="startExam(25)">25 Soalan</button>
+                    <button class="q-btn" style="background-color: #d63031;" onclick="startExam(30)">Semua (30)</button>
+                </div>
+            </div>
+
+            <div id="exam-active" class="exam-card">
+                <div class="tag" style="background-color: #e17055; color: white;">Soalan <span id="exam-counter">1/15</span></div>
                 <div class="question-text" id="exam-question" style="margin-top: 10px;">Soalan ujian...</div>
                 <p style="color: #636e72; margin-top: 10px; font-size: 0.9em;">Pilih definisi / jawapan yang paling tepat:</p>
                 
@@ -216,122 +244,223 @@
                 <div class="feedback" id="exam-feedback"></div>
                 
                 <div class="controls" style="display: none;" id="exam-next-btn">
-                    <button class="action-btn" onclick="loadExamQuestion()">Soalan Seterusnya &#8594;</button>
+                    <button class="action-btn" id="btn-next-question" onclick="loadExamQuestion()">Soalan Seterusnya &#8594;</button>
                 </div>
-                <div class="score-display">Skor Topik Ini: <span id="score" style="color: #0984e3; font-size: 1.2em;">0</span></div>
+                
+                <div class="exam-stats">
+                    <span>Skor: <span id="score" style="color: #0984e3;">0</span></span>
+                    <button onclick="resetExamSetup()" style="background: none; border: none; color: #e17055; cursor: pointer; font-weight: bold; text-decoration: underline;">Tamat Ujian</button>
+                </div>
             </div>
+
+            <div id="exam-result" class="exam-card">
+                <h2 style="color: #27ae60;">Ujian Selesai! 🎉</h2>
+                <div style="font-size: 4em; margin: 20px 0; color: #2d3436;" id="final-score-display">15/15</div>
+                <p style="color: #636e72; font-size: 1.2em;" id="final-score-msg">Tahniah, pencapaian yang cemerlang!</p>
+                <button class="action-btn" style="margin-top: 20px;" onclick="resetExamSetup()">Pilih Ujian Lain</button>
+            </div>
+
         </div>
 
     </div>
 
     <script>
-        // ================= DATABASE TOPIK =================
+        // ================= DATABASE TOPIK (30 Soalan / Topik) =================
         const db = {
             "pengenalan": [
                 { "soalan": "Apakah definisi Kaunseling Kelompok?", "jawapan": "Kaunseling kelompok adalah satu bentuk intervensi yang membolehkan kaunselor bekerja dengan lebih daripada seorang klien. Ia sesuai untuk pelbagai peringkat umur dan perkembangan." },
-                { "soalan": "Nyatakan dua matlamat utama kaunseling kelompok.", "jawapan": "Dua matlamat utamanya adalah untuk tujuan penyembuhan (remedial) dan pencegahan masalah." },
+                { "soalan": "Nyatakan dua matlamat utama kaunseling kelompok.", "jawapan": "Dua matlamat utamanya adalah untuk tujuan penyembuhan (remedial) dan pencegahan masalah emosi atau tingkah laku." },
                 { "soalan": "Apakah kerangka masa (time frame) yang difokuskan dalam kaunseling kelompok?", "jawapan": "Ia memberi penekanan kepada situasi masa kini, iaitu merangkumi pemikiran sedar, perasaan, dan tingkah laku ahli pada masa sekarang (here and now)." },
                 { "soalan": "Apakah peranan utama kaunselor di dalam sesuatu kelompok?", "jawapan": "Kaunselor berperanan sebagai fasilitator, pemudah cara proses interaksi, pemberi maklumat, dan pendorong untuk ahli melaksanakan pelan mereka." },
                 { "soalan": "Nyatakan kelebihan sesi kelompok yang menyerupai realiti sebenar.", "jawapan": "Kelompok bertindak sebagai mikrokosma masyarakat (a microcosm of society) berikutan wujudnya kepelbagaian latar belakang dalam kalangan ahlinya. Ini membantu ahli membina kemahiran interpersonal secara praktikal." },
-                { "soalan": "Bagaimanakah kaunseling kelompok memperkasa kemahiran sosial ahli?", "jawapan": "Kelompok mengajar ahli cara berkomunikasi yang sihat, memberi pujian, peka terhadap orang lain, dan menunjukkan rasa ambil berat." },
-                { "soalan": "Apakah manfaat kaunseling kelompok kepada golongan kanak-kanak?", "jawapan": "Ia digunakan sebagai alat remedi untuk mengawal tingkah laku bermasalah seperti sikap suka bergaduh, membuli, serta membantu mereka mengawal emosi dan kemahiran sosial." },
+                { "soalan": "Bagaimanakah kaunseling kelompok memperkasa kemahiran sosial ahli?", "jawapan": "Kelompok mengajar ahli cara berkomunikasi yang sihat, memberi pujian, peka terhadap orang lain, dan menunjukkan rasa ambil berat melalui maklum balas berterusan." },
+                { "soalan": "Apakah manfaat kaunseling kelompok kepada golongan kanak-kanak?", "jawapan": "Ia digunakan sebagai alat remedi untuk mengawal tingkah laku bermasalah seperti sikap suka bergaduh, membuli, serta membantu mereka membina kemahiran sosial yang positif." },
                 { "soalan": "Mengapakah kaunseling kelompok dianggap medium yang baik untuk remaja?", "jawapan": "Ia memberi remaja ruang selamat bagi meluahkan emosi, bereksperimen dengan realiti, serta mencari keyakinan diri dengan bantuan sokongan rakan sebaya." },
-                { "soalan": "Bagaimanakah penyertaan dalam kelompok membantu golongan warga emas?", "jawapan": "Ia dapat mengatasi masalah pengasingan sosial dan perasaan tidak dihargai yang sering dialami mereka. Ia juga membantu warga emas menetapkan makna baru dalam kehidupan dan meningkatkan integriti diri." },
-                { "soalan": "Sebutkan lima jenis kumpulan (kelompok) yang biasa dikendalikan dalam bidang ini.", "jawapan": "Jenis-jenis kelompok merangkumi kelompok psikoterapi, kelompok psikopendidikan, kelompok kerja (task facilitation), kelompok jangka pendek, dan kelompok kaunseling." },
+                { "soalan": "Bagaimanakah penyertaan dalam kelompok membantu golongan warga emas?", "jawapan": "Ia dapat mengatasi masalah pengasingan sosial dan perasaan tidak dihargai yang sering dialami mereka. Ia juga membantu warga emas menetapkan makna baharu dalam kehidupan dan meningkatkan integriti diri." },
+                { "soalan": "Sebutkan lima jenis kumpulan (kelompok) yang biasa dikendalikan dalam bidang kaunseling.", "jawapan": "Jenis-jenis kelompok merangkumi kelompok psikoterapi, kelompok psikopendidikan, kelompok kerja (task facilitation), kelompok jangka pendek, dan kelompok kaunseling." },
                 { "soalan": "Apakah fokus matlamat bagi Kelompok Psikoterapi?", "jawapan": "Fokusnya adalah ke arah pemulihan, rawatan mendalam, dan pembentukan semula struktur personaliti ahli. Ia biasanya membabitkan individu yang mempunyai masalah emosi atau psikologikal yang berat." },
-                { "soalan": "Bagaimanakah Kelompok Psikopendidikan berfungsi?", "jawapan": "Kelompok ini dibina berasaskan tema yang khusus dengan memberikan fakta, maklumat, serta melatih ahli kemahiran daya tindak (coping) melalui pelbagai latihan." },
-                { "soalan": "Berikan dua contoh situasi di mana Kelompok Psikopendidikan digunakan.", "jawapan": "Antara contohnya ialah kelompok latihan pengurusan kemarahan dan kelompok sokongan untuk mangsa keganasan rumah tangga." },
-                { "soalan": "Apakah peranan Kelompok Kerja (Task Facilitation)?", "jawapan": "Ia ditubuhkan untuk membantu organisasi, komuniti, atau agensi menambah baik fungsi kerja mereka dengan memanfaatkan dinamika kelompok bagi mencapai sasaran tugas." },
-                { "soalan": "Apakah pendekatan utama yang diaplikasikan dalam Kelompok Jangka Pendek?", "jawapan": "Oleh kerana durasinya singkat, ia sangat bersandarkan pada pendekatan kognitif dan modifikasi tingkah laku yang berfokus ke arah penyelesaian tepat." }
+                { "soalan": "Bagaimanakah Kelompok Psikopendidikan berfungsi?", "jawapan": "Kelompok ini dibina berasaskan tema yang khusus dengan memberikan fakta, maklumat, serta melatih kemahiran daya tindak (coping) melalui pelbagai siri latihan." },
+                { "soalan": "Berikan dua contoh situasi di mana Kelompok Psikopendidikan digunakan.", "jawapan": "Antara contohnya ialah kelompok latihan pengurusan kemarahan dan kelompok sokongan untuk mangsa keganasan rumah tangga atau HIV/AIDS." },
+                { "soalan": "Apakah peranan Kelompok Kerja (Task Facilitation)?", "jawapan": "Ia ditubuhkan untuk membantu organisasi, komuniti, atau agensi menambah baik fungsi kerja mereka dengan memanfaatkan dinamika kelompok bagi mencapai sasaran." },
+                { "soalan": "Apakah pendekatan utama yang diaplikasikan dalam Kelompok Jangka Pendek?", "jawapan": "Oleh kerana durasinya singkat, ia bersandarkan pada pendekatan kognitif dan modifikasi tingkah laku yang berfokus ke arah penyelesaian masalah dengan cepat dan berekonomi." },
+                { "soalan": "Apakah tujuan utama Kelompok Kaunseling (Counseling Group) berbanding terapi?", "jawapan": "Ia memfokuskan kepada resolusi spesifik bagi cabaran kehidupan, isu pekerjaan, sosial, dan personal tanpa bermatlamat menukar keseluruhan struktur personaliti ahli." },
+                { "soalan": "Apakah fokus yang dinilai selain pemikiran sedar dalam kelompok?", "jawapan": "Selain pemikiran, fasa kelompok turut meletakkan fokus yang kuat pada pengurusan perasaan (emosi) dan perubahan tingkah laku klinikal." },
+                { "soalan": "Selain mengatasi masalah, apakah tumpuan positif dalam kaunseling kelompok?", "jawapan": "Intervensi kelompok juga memberikan tumpuan utama kepada aspek perkembangan potensi diri klien serta pemerkasaan aset dalaman (internal strength)." },
+                { "soalan": "Apakah bentuk teknik praktikal yang diaplikasikan oleh fasilitator dalam kelompok?", "jawapan": "Fasilitator akan menggabungkan kemahiran pemprosesan verbal dan bukan verbal, di samping intervensi struktur seperti latihan serta tugasan kerja rumah." },
+                { "soalan": "Bagaimanakah kaunseling kelompok menjimatkan masa rawatan secara praktikal?", "jawapan": "Oleh kerana ia menghimpunkan ramai klien di bawah satu sesi serentak, masa pendedahan intervensi oleh kaunselor menjadi jauh lebih optimum dan pantas." },
+                { "soalan": "Bagaimanakah proses pembelajaran menerusi pemerhatian (observation) terjadi?", "jawapan": "Ahli kelompok menyerap dan meniru maklum balas serta tingkah laku positif (modeling) yang ditonjolkan oleh ahli lain mahupun oleh ketua." },
+                { "soalan": "Siapakah kelompok sasar dominan bagi Kelompok Kaunseling?", "jawapan": "Ia disasarkan kepada individu yang mempunyai fungsi psikologikal yang normal namun sedang menghadapi cabaran kitaran hidup tertentu." },
+                { "soalan": "Di manakah selalunya Kelompok Kaunseling ini aktif beroperasi?", "jawapan": "Medium ini secara meluas ditawarkan di seting institusi sekolah, kolej, universiti, serta pelbagai agensi khidmat kesihatan mental komuniti." },
+                { "soalan": "Apakah signifikansi kelompok kaunseling kepada komuniti pelajar IPT?", "jawapan": "Ia menyajikan ruang berfokus untuk pelajar mengatasi kebimbangan transisi akademik, dilema perhubungan intim, isu identiti diri, dan kecelaruan pemilihan kerjaya." },
+                { "soalan": "Mengapakah pesakit psikiatri dirujuk ke Kelompok Psikoterapi berbanding jenis lain?", "jawapan": "Kerana proses pendekatannya mendidik semula minda tidak sedar secara mendalam yang menelan masa panjang demi mengubati psikosis atau gangguan emosi berisiko." },
+                { "soalan": "Apakah orientasi utama yang wujud dalam Kelompok Psikoterapi?", "jawapan": "Ia menggunakan teknik penjelajahan alam bawah sedar (unconscious mind) dan menelusuri parut trauma masa lalu untuk memperbaiki masa depan pesakit." },
+                { "soalan": "Apakah kepakaran asas yang disyaratkan untuk fasilitator Kelompok Kerja?", "jawapan": "Pemimpin kelompok tersebut wajib mahir dalam selok-belok pengurusan dinamika organisasi serta berkeupayaan membina piawaian pentaksiran program yang jitu." },
+                { "soalan": "Bagaimanakah keberkesanan sesuatu Kelompok Jangka Pendek dijamin?", "jawapan": "Melalui penyasaran spesifik yang dipersetujui terus antara ahli, tempoh masa terhad, dan kelolaan kaunselor terlatih yang memandu terus tanpa berlengah." },
+                { "soalan": "Apakah peranan kelompok sokongan (support group) kepada mangsa dera?", "jawapan": "Ia menyediakan kubu emosi luar yang selamat supaya mangsa pulih daripada pengasingan sosial dan dilatih membina kemahiran adaptasi (coping)." },
+                { "soalan": "Bagaimanakah tahap fungsi ahli dinilai pasca sesi perjumpaan komuniti?", "jawapan": "Tahap kefungsian disemak jika kelompok berjaya merungkai halangan birokrasi persekitaran lantas mengembalikan klien berintegrasi menyumbang bakti kepada kelompok awam." }
             ],
             "kepimpinan": [
-                { "soalan": "Apakah matlamat kepimpinan kelompok dalam kaunseling?", "jawapan": "Kepimpinan kelompok bertujuan memudah cara interaksi, mewujudkan persekitaran selamat, merangsang penyertaan ahli secara penuh, serta memandu kelompok menuju sasaran." },
-                { "soalan": "Mengapakah ciri kepelbagaian gaya memimpin (versatility) ditekankan?", "jawapan": "Versatiliti membuktikan bahawa tiada corak satu gaya (one size fits all) yang berkesan untuk semua kelompok. Kaunselor mesti beradaptasi mengikut umur dan profil kumpulan." },
-                { "soalan": "Dalam situasi apakah gaya pimpinan 'Leader Directed' paling efisien?", "jawapan": "Gaya berpusatkan ketua ini paling bersesuaian untuk rawatan krisis kelompok perjumpaan jangka masa terhad (sekali), ahli penjara, pesakit hospital, atau masalah rehabilitasi spesifik." },
-                { "soalan": "Bezakan fokus bagi Kepimpinan Interpersonal dan Kepimpinan Intrapersonal.", "jawapan": "Interpersonal menekankan ikatan komunikasi penyelesaian tugas kelompok, manakala Intrapersonal menjurus secara eksklusif dalam penerokaan kelemahan kendiri, kebimbangan mental, dan luka peribadi." },
-                { "soalan": "Sebutkan ciri-ciri psikologi ketua atau kaunselor kelompok yang berkaliber.", "jawapan": "Mereka terdiri daripada personaliti terbuka, penyabar, sangat selesa mendampingi individu, objektif, kesihatan mental yang terjamin, dan tidak bersikap berat sebelah." },
-                { "soalan": "Apakah rasional keperluan kaunselor meluaskan spektrum pergaulan peribadinya?", "jawapan": "Aktiviti pergaulan mendedahkan kaunselor kepada beraneka demografi populasi masyarakat, lantas memupuk kapasiti mental ke arah keluwesan memandang kehidupan pelbagai warna realiti klien." },
-                { "soalan": "Mengapakah tahap kefahaman berbilang teori dan konflik perkembangan usia manusia amat penting?", "jawapan": "Landasan teori membantu kaunselor melihat dilema yang disuarakan ahli dari pelbagai lensa rujukan. Ia memudahkan penjelasan dilema tipikal mengikut peringkat usia individu tersebut." },
-                { "soalan": "Kenapakah 'Kepekaan Diri' (Self-Awareness) fasilitator menjadi nadi kejayaan etika praktis?", "jawapan": "Sifat sedar diri menahan kaunselor daripada penyakit mengenakan doktrin dan nilai peribadi sendiri secara paksa ke atas perjalanan hidup klien yang pelbagai latar budaya." },
-                { "soalan": "Huraikan cabaran ketakutan mental bagi graduan kaunselor yang masih baharu.", "jawapan": "Pemimpin pemula biasanya dirundung paranoia berhadapan ruangan sunyi memanjang (kesenyapan), ketidakupayaan menyuraikan amarah konflik, serta ketakutan berhadapan ahli manipulatif." },
-                { "soalan": "Sebutkan tiga jenis kemahiran utama memimpin interaksi sesebuah kumpulan.", "jawapan": "Ia merangkumi kemahiran membuat ulasan merumus (summarizing), membiaskan galakan penyertaan yang bersemangat, dan teknik pemecahan keserabutan (clarifying)." },
-                { "soalan": "Apakah nilai teras yang dituntut oleh kerangka kecekapan multibudaya (multicultural competence)?", "jawapan": "Kecekapan silang budaya menuntut pengiktirafan kepada rujukan adat, kebebasan daripada sentimen bias diskriminasi etnik, dan peningkatan intervensi klinikal yang meraikan kelainan klien." },
-                { "soalan": "Apakah fokus utama proses menghentikan (terminating) secara rasmi satu perjumpaan?", "jawapan": "Sesi patut diringkaskan bersama rangkuman kata sepakat, serlahan pandangan baru (insights), disusuli perancangan kesinambungan kehidupan luar klien berdasar ilmu terapi kelompok tersebut." },
-                { "soalan": "Apakah prinsip utama bagi 'kelayakan' seorang pemimpin kelompok berdasarkan etika?", "jawapan": "Sijil akademik tidak memadai tanpa disusuli pengalaman kemahiran khusus. Pemimpin dilarang sama sekali bereksperimen dengan rawatan psikoterapi yang bukan kemahiran teknikal mereka." },
-                { "soalan": "Apakah kesan kerosakan akibat pertindihan Hubungan Dual (Dual Relationship) di luar?", "jawapan": "Pertembungan ikatan selain klien-profesional boleh menghancurkan keadilan layanan kelompok, membenihkan unsur favouritisme, serta membongkar kerahsiaan peribadi rakan ke persekitaran yang mengancam." },
-                { "soalan": "Bagaimanakah corak penyelesaian etika untuk menangani ahli trauma hasil manipulasi lalu?", "jawapan": "Kaunselor wajar peka akan amaran reaksi klien dan memastikan penyediaan susulan sokongan terapi individu tersedia sepenuhnya buat kelangsungan emosi mereka yang tercedera." }
+                { "soalan": "Apakah matlamat utama kepimpinan kelompok dalam kaunseling?", "jawapan": "Kepimpinan kelompok bertujuan memudah cara interaksi, mewujudkan persekitaran selamat, merangsang penyertaan ahli secara penuh, serta memandu kelompok mencapai matlamat." },
+                { "soalan": "Mengapakah ciri kepelbagaian gaya memimpin (versatility) sangat ditekankan?", "jawapan": "Versatiliti membuktikan bahawa tiada satu corak statik (one size fits all) yang berkesan untuk semua kelompok. Kaunselor mesti beradaptasi mengikut profil kumpulan." },
+                { "soalan": "Dalam situasi apakah gaya pimpinan 'Leader Directed' paling efisien?", "jawapan": "Gaya berpusatkan ketua ini paling bersesuaian untuk perjumpaan jangka masa terhad (sekali rawat), ahli penjara, pesakit hospital, atau masalah rehabilitasi spesifik." },
+                { "soalan": "Bezakan fokus dominan bagi Kepimpinan Interpersonal dan Intrapersonal.", "jawapan": "Interpersonal menekankan ikatan perhubungan komunikasi ahli, manakala Intrapersonal menjurus secara langsung terhadap penerokaan is-isu dalaman seperti kemurungan, kebimbangan, dan nilai kendiri klien." },
+                { "soalan": "Sebutkan lima ciri psikologi ketua kaunselor kelompok yang berkaliber.", "jawapan": "Ketua wajar memiliki sikap terbuka, peduli, sangat selesa berdampingan, sabar, jujur, kuat pendirian, sensitif, serta mempunyai status kesihatan mental yang mantap." },
+                { "soalan": "Apakah rasional keperluan kaunselor meluaskan spektrum pergaulan peribadinya?", "jawapan": "Pergaulan di dunia sebenar mendedahkan kaunselor kepada rencam budaya. Pendedahan ini mematangkan kapasiti mentalnya untuk menyelami realiti klien tanpa prasangka sempit." },
+                { "soalan": "Mengapakah tahap kefahaman perkembangan silang usia manusia amat penting?", "jawapan": "Ia menyumbang kepakaran objektif kepada fasilitator untuk memahami dilema atau konflik tipikal yang bersesuaian dengan setiap peringkat biologi dan psikososial ahli kelompok." },
+                { "soalan": "Kenapakah 'Kepekaan Diri' (Self-Awareness) fasilitator menjadi asas amalan beretika?", "jawapan": "Kesedaran kendiri yang tinggi menahan kaunselor daripada penyakit mengenakan doktrin dan nilai peribadi secara paksa ke atas perjalanan hidup klien yang pelbagai latar." },
+                { "soalan": "Huraikan antara punca utama kebimbangan (anxiety) graduan kaunselor yang masih baharu.", "jawapan": "Pemimpin pemula biasanya dirundung rasa gementar saat disajikan tempoh kesenyapan (silence) kumpulan, mengawal ledakan konflik spontan, serta menundukkan ahli yang bermasalah." },
+                { "soalan": "Sebutkan tiga jenis kemahiran asas (basic skills) dalam memimpin interaksi kumpulan.", "jawapan": "Fasilitator mestilah menguasai teknik mendengar aktif berempati, melontar ulasan merumus (summarizing), dan kemahiran membiaskan galakan maklum balas ahli secara harmoni." },
+                { "soalan": "Apakah fungsi kritikal ketika melakukan penutupan/penamatan (terminating) sesi rasmi?", "jawapan": "Sesi wajib digarap kembali menerusi proses merumus. Pemimpin perlu memandu ahli merumuskan celik akal baharu supaya ilmu rawatan mudah dipindahkan ke medan realiti luar." },
+                { "soalan": "Apakah nilai teras yang dituntut oleh kerangka kecekapan multibudaya (multicultural competence)?", "jawapan": "Ia mewajibkan pengiktirafan teguh terhadap pemikiran adat istiadat, pelepasan daripada kacamata bias, serta asimilasi intervensi klinikal yang memuliakan hak kelainan (diversity) klien." },
+                { "soalan": "Apakah prinsip utama kelayakan seorang pemimpin kelompok berdasarkan standard etika?", "jawapan": "Segulung sijil tidak menjamin kehebatan tanpa kemahiran khusus. Pemimpin dilarang sesekali mengeksploitasi kumpulan dengan menguji rawatan di luar pengkhususan teknikal kelayakannya." },
+                { "soalan": "Apakah kesan bahaya rentetan daripada ikatan Hubungan Dual (Dual Relationship) di luar kelompok?", "jawapan": "Pencampuran hubungan personal di luar sesi mencemarkan amalan objektiviti layanan kelompok. Ini akan melahirkan unsur nepotisme serta merisikokan integriti keselamatan kerahsiaan rakan-rakan sesi yang lain." },
+                { "soalan": "Bagaimanakah susulan etika untuk menangani ahli trauma yang tercetus daripada eksperimen tugasan terapi?", "jawapan": "Kaunselor wajib bertindak prihatin dan efisien. Jika pendedahan luka lalu membongkar luka akut, rujukan susulan untuk terapi invididu mestilah dipasang rapi sejurus sesi ditutup." },
+                { "soalan": "Apakah implikasi gaya kepimpinan kelompok yang terlalu liberal/lepas tangan?", "jawapan": "Kelompok akan kehilangan kompas panduan yang drastik menyebabkan masa terbazir dan ahli berasa keliru serta tidak selamat kerana tiada pengawasan berstruktur." },
+                { "soalan": "Mengapakah kemahiran 'Clarifying' (menjelaskan) kerap diguna pakai di tahap awal kelompok?", "jawapan": "Bagi melerai sebarang kekaburan maksud oleh penyampai, agar tiada ahli yang menanggung syak wasangka hasil daripada salah tafsir semantik ketika pertukaran maklumat." },
+                { "soalan": "Apakah tanda-tanda kaunselor mula beransur gagal mengurus dinamika emosi kelompok?", "jawapan": "Tanda dominan ialah fasilitator mula bersikap reaktif menghukum (defensif), terikut-ikut sentimen kemarahan, lantas hilang objektiviti dalam memberi pandangan." },
+                { "soalan": "Apakah bukti klinikal yang menterjemahkan kelestarian kecekapan budaya (cultural competence)?", "jawapan": "Kesuburan nilai keterangkuman (inclusion) bertambah ampuh yang dibuktikan apabila kelompok berjaya berfungsi memecahkan sempadan etnik, mewujudkan kepercayaan harmoni berbilang kaum." },
+                { "soalan": "Di bawah kerangka intrapersonal, siapakah yang memikul tanggungjawab membina kandungan huraian sesi?", "jawapan": "Kesemua ahli kelompok memegang tanggungjawab berkongsi beban tersebut. Kaunselor berundur sebagai penyedia panduan sambil ahli bergerak meluahkan ketakutan masing-masing." },
+                { "soalan": "Sebutkan satu punca mengapa kaunselor digalakkan menyertai kumpulan eksplorasi peribadinya (terapi sendiri).", "jawapan": "Dengan meletakkan dirinya pada kerusi klien, kaunselor diserapkan kefahaman jitu akan keperitan berhadapan pendedahan diri, lalu ia membiakkan kualiti empati klinikal luar biasa." },
+                { "soalan": "Bagaimanakah gaya pimpinan kelompok ditentusahkan menerusi lensa pendekatan teori?", "jawapan": "Lensa teori bertindak bagai pemandu arah (blueprint) khusus; jika berlandaskan teori kognitif, gaya kaunselor diwajibkan menjadi instruktor latihan tingkah laku yang tegar." },
+                { "soalan": "Apakah rasional pantang larang kaunselor mengemukakan isu parut peribadinya ke dalam kelompok seliaannya?", "jawapan": "Pemindahan isunya akan mencuri masa rawatan sah klien dan mewujudkan kecelaruan batasan sempadan. Perkara ini meranapkan paksi etika profesion kaunseling." },
+                { "soalan": "Nyatakan keburukan kaunselor menonjolkan profil 'Tahu Serba-serbi' (omnipotent) semasa fasa storming.", "jawapan": "Ia membekukan pembentukan autonomi klien dan mematikan budaya kritikan rasional apabila ketua sentiasa menggagaskan keputusan muktamad dalam meleraikan konflik pendapat." },
+                { "soalan": "Apakah nilai empati yang terjelma berbanding empati simpati cetek?", "jawapan": "Empati klinikal menyelam persepsi derita dari tingkap lensa emosi klien sepenuhnya tanpa setitik pun hukuman saringan kognitif dari kaca mata peribadi kaunselor." },
+                { "soalan": "Mengapakah cabaran membimbing kumpulan paksaan (mandatori) lebih merumitkan gaya kepimpinan kaunselor?", "jawapan": "Ketua dihenyak tugas raksasa mencairkan penolakan tebal bersalut kemarahan. Pendekatan memujuk dengan penstrukturan penuh hikmah perlu ditabur sebelum klien sudi bertoleransi." },
+                { "soalan": "Di manakah titik letaknya peranan ketua apabila ahli mula memanipulasi monopoli penceritaan (storytelling)?", "jawapan": "Ketua berhak menekan brek komunikasi (memintas secara berhemah) untuk memulangkan kayu ukur masa kini, menghentikan manipulasi pelarian isu individu tersebut." },
+                { "soalan": "Bagaimanakah ketua memastikan tiada 'kambing hitam' muncul pada sesi pergolakan marah?", "jawapan": "Ketua secara aktif menggunakan kuasa vetonya menapis ancaman provokasi bertubi-tubi dan mendidik si penyerang membuat konfrantasi sihat berlandaskan fakta tingkah laku." },
+                { "soalan": "Mengapakah kaunselor pemula disaran menggandingkan kepimpinan secara bersama (co-leadership)?", "jawapan": "Model gandingan menyajikan jaring pampasan kelemahan antara satu sama lain; seorang memimpin verbal, seorang lagi memerhati reaksi isyarat lisan tersembunyi tanpa kelesuan pemerhatian." },
+                { "soalan": "Apakah refleksi kritikal yang wajib dijawab kaunselor pasca penamatan sesebuah perjalanan kumpulan?", "jawapan": "Satu penilaian diagnostik introspektif bagi menganalisis kesilapan teknik kepimpinannya yang berlaku agar intervensi rawatan kelompok masa depan lebih bernilai dan matang." }
             ],
             "etika": [
-                { "soalan": "Apakah takrifan kewajipan Izin Termaklum (Informed Consent) dalam pendaftaran ahli kelompok?", "jawapan": "Ia merupakan protokol pemakluman komprehensif bagi menzahirkan semua risiko bahaya, pendedahan kelayakan ketua, bayaran, prosedur limitasi simpanan kerahsiaan sebelum mengikat persetujuan klien." },
-                { "soalan": "Apakah kriteria layanan bagi Ahli Rujukan Mandatori (involuntary members) yang diwajibkan oleh undang-undang?", "jawapan": "Biarpun paksaan dikenakan, kaunselor dituntut memperjelaskan padah keengganan berpartisipasi dan menerangkan kebaikan intervensi tanpa paksaan kepada asimilasi luahan kendiri ahli tersebut." },
-                { "soalan": "Huraikan langkah peredaan kaunselor terhadap sikap bermusuh Ahli Mandatori secara beretika.", "jawapan": "Langkah validasi perasaan adalah sangat kritikal; pantang sekali melabel mereka keras kepala atau menghukum secara konfrantasi terus tanpa membina akar keselamatan psikologikal." },
-                { "soalan": "Bagaimanakah kaunselor membenteras serangan bahasa berasaskan prejudis Stereotaip secara matang?", "jawapan": "Teguran profesional yang bertenang tetapi rasional hendaklah dikeluarkan serta-merta. Teguran tersebut dipusatkan kepada kritikan jenis kelakuan yang melukakan, bukan menghukum batang tubuh pelaku." },
-                { "soalan": "Berikan asas penggunaan laras bahasa memberdaya (empowering) bagi individu kumpulan Orang Kurang Upaya (OKU).", "jawapan": "Prinsip linguistik memerlukan penonjolan perkataan keupayaan berfokuskan individu mendahului label limitasi (cth: 'individu dengan autisme' dan bukannya 'budak kecacatan') bagi memelihara kehormatan mereka." },
-                { "soalan": "Adakah klien bebas angkat kaki keluar kelompok (dropping out) pada bila-bila masa mengikut kemahuan mereka?", "jawapan": "Mereka mempunyai hak asasi; walau bagaimanapun komitmen kehadiran harus digariskan secara tertib pada orientasi awal. Pemergian ahli diwajibkan menjalani pendedahan sebab keluar bagi meminimalkan kesan rentetan trauma kelompok." },
-                { "soalan": "Sebutkan dua contoh Risiko Psikologikal (psychological risks) yang paling ditakuti semasa pendedahan diri?", "jawapan": "Dinamika ini mendedahkan bahaya ahli dikambing-hitamkan (scapegoating) oleh manipulasi ahli lain, dan cetusan taufan emosi (hostility) yang gagal dikawal hingga membawa retakan persahabatan kelompok." },
-                { "soalan": "Nyatakan taktik defensif kaunselor demi membendung letupan Risiko Psikologikal kepada ahli rapuh.", "jawapan": "Mekanisme saringan latar belakang wajib diketatkan sebelum mendaftar keahlian. Intervensi kecemasan grounding relaksasi perlu tersedia dan penyeliaan dinamika wajib dipantau aktif oleh kaunselor." },
-                { "soalan": "Bolehkah kaunselor berikrar membekalkan perlindungan Kerahsiaan secara 100 peratus tanpa belah bahagi?", "jawapan": "Sama sekali ditegah memanipulasi kebenaran; wujud akta limitasi undang-undang mewajibkan laporan pengungkapan pecah amanah jikalau elemen mencederakan pesakit kanak-kanak mahupun niat jenayah diputuskan." },
-                { "soalan": "Sekiranya pendaftaran kelompok menempatkan pelajar berumur minor (bawah 18 tahun), apakah status kerahsiaannya?", "jawapan": "Statut Akta Kaunselor mewajibkan pemakluman asas program dibentangkan kepada waris keluarga penjaga tanpa menjaja spesifik kerosakan intimasi anak; fasilitator berperanan mengurus persefahaman sempadan etika tersebut secara cermat." },
-                { "soalan": "Sejauh manakah impak Keadilan Sosial (Social Justice) diketengahkan selaku payung kelompok ini?", "jawapan": "Ruangan sesi perlu diteguhkan dari dicabuli amalan penindasan majoriti, rasisme, kasta darjat, serta layanan berat sebelah supaya komuniti tertindas kembali membebaskan penderitaan dengan sokongan suara yang teguh." },
-                { "soalan": "Huraikan cabaran persilangan budaya (Diversity) jika norma ahli bercanggah total dengan doktrin nilai kaunselor.", "jawapan": "Kecacatan pemahaman terhadap gaya budaya klien akan menjerumuskan kaunselor kepada salah tafsiran dan penterjemahan menghukum kelakuan. Ini mendesak rujukan berterusan fasilitator ke atas rukun hormat pelbagai etnik peribadi (Respectful model)." },
-                { "soalan": "Apakah konsep pemenjaraan Nilai Kendiri Kaunselor (Ethical Bracketing)?", "jawapan": "Apabila pertembungan kepercayaan nilai memuncak, kaunselor diwajibkan secara profesional meletakkan nilai anutan peribadinya di tepi bilik dan bekerja mengemudi kejayaan resolusi berteraskan orientasi acuan kehidupan penderita klien semata-mata." },
-                { "soalan": "Apakah bahaya mengaplikasikan Teknik Kaunseling berbentuk radikal atau provokasi?", "jawapan": "Gaya membongkar kesedihan lampau (unfinished business) secara ekstrem boleh memercikkan trauma atau serangan panik secara mendadak sekiranya intervensi persediaan kemahiran menyerap kejutan diabaikan fasilitator." },
-                { "soalan": "Bagaimanakah fasilitator pakar memanifestasikan kualiti amalan Kompetensi Kecekapan Latihan mereka di peringkat kemuncak?", "jawapan": "Tahap profesional kaunselor ini digarap melalui pembudayaan penyerapan pendidikan secara holistik yang merangkumi pembedahan klinikal (supervision), menyertai penerokaan kumpulan eksplorasi, serta mendapatkan sesi terapinya sendiri." }
+                { "soalan": "Apakah takrifan kewajipan Izin Termaklum (Informed Consent) dalam pendaftaran ahli kelompok?", "jawapan": "Ia merupakan protokol pemakluman komprehensif bagi menzahirkan kelayakan ketua, bayaran, matlamat, prosedur, dan limitasi simpanan kerahsiaan sebelum mengikat persetujuan klien." },
+                { "soalan": "Bilakah proses Izin Termaklum sepatutnya dijalankan di dalam sesuatu kumpulan?", "jawapan": "Ia bukanlah perjanjian statik, sebaliknya berterusan; berjalan sama ada pada fasa sebelum bermula, awal kelompok, atau diulang faham mengikut perkembangan situasi." },
+                { "soalan": "Apakah kriteria layanan bagi Ahli Rujukan Mandatori (involuntary members) yang diwajibkan oleh undang-undang?", "jawapan": "Kaunselor dituntut memperjelaskan limitasi kebebasan mereka, menerangkan implikasi keengganan berpartisipasi, dan terus memujuk memaparkan manfaat tanpa provokasi melampau." },
+                { "soalan": "Huraikan langkah peredaan kaunselor terhadap sikap bermusuh Ahli Mandatori secara beretika.", "jawapan": "Kaunselor perlu mengelak melabel klien sebagai 'keras kepala'. Validasi perasaan penolakan mereka sebagai reaksi normal dan bina dahulu iklim keselamatan psikologikal tanpa paksaan." },
+                { "soalan": "Bagaimanakah kaunselor membenteras serangan lisan berasaskan prejudis Stereotaip secara matang?", "jawapan": "Teguran profesional yang tenang tanpa menghukum pelaku wajib ditegakkan segera. Ia mestilah memfokuskan kepada kelakuan spesifik yang menyakitkan, lalu mendorong refleksi asal usul prejudis tersebut." },
+                { "soalan": "Berikan asas penggunaan laras bahasa memberdaya (empowering) bagi individu Orang Kurang Upaya (OKU).", "jawapan": "Prinsip menghormati mendesak penggunaan label berfokus individu dahulu (person-first language) seperti 'individu dengan autisme' berbanding frasa merendahkan seperti 'pesakit cacat' atau 'simpati simpati'." },
+                { "soalan": "Adakah klien bebas angkat kaki keluar kelompok (dropping out) pada bila-bila masa mengikut kemahuan mereka?", "jawapan": "Secara teknikalnya, ya. Namun, komitmen tertib memerlukan ahli menerangkan sebab mereka berhenti; ini mengelakkan penyuraian berunsur trauma yang meninggalkan luka tanpa nokhtah (unfinished business)." },
+                { "soalan": "Sebutkan dua contoh Risiko Psikologikal (psychological risks) yang digeruni di sebalik pendedahan berani?", "jawapan": "Risiko tersebut merangkumi insiden dikambing-hitamkan (scapegoating) oleh rakan lain, penyalahgunaan kuasa intervensi kaunselor, pecah rahsia, dan letusan taufan emosi tidak terkawal." },
+                { "soalan": "Nyatakan taktik defensif kaunselor demi membendung letupan Risiko Psikologikal kepada ahli yang sangat rapuh.", "jawapan": "Penapisan saringan (screening) latar mental wajib ketat sebelum meluluskan pendaftaran. Ketika sesi, ruang ekspresi emosi dikawal tanpa paksaan pendedahan sambil teknik grounding siap sedia dipanjangkan." },
+                { "soalan": "Bolehkah kaunselor berikrar membekalkan perlindungan Kerahsiaan secara 100 peratus mutlak?", "jawapan": "Sama sekali ditegah memanipulasi persetujuan sedemikian. Ada pengecualian undang-undang mewajibkan pemecahan rekod sulit jika terkandung ancaman fizikal/nyawa pada diri sendiri atau orang awam." },
+                { "soalan": "Sekiranya pendaftaran kelompok menempatkan pelajar minor (bawah 18 tahun), apakah status kerahsiaannya?", "jawapan": "Peruntukan akta kaunselor melegitimasikan hak pemakluman ibu bapa secara asas tanpa menjaja spesifik kerosakan rahsia; fasilitator wajib mendidik budak itu faham tentang batas perlindungan ini." },
+                { "soalan": "Sejauh manakah impak Keadilan Sosial (Social Justice) diketengahkan selaku payung nilai terapi ini?", "jawapan": "Kelompok dikemudi bagai medan pelindung mangsa penindasan dan rasisme. Kaunselor berwibawa menukar gear sebagai advokasi hak-hak masyarakat bagi menggempur diskriminasi sistem awam yang merosakkan." },
+                { "soalan": "Huraikan cabaran persilangan budaya (Diversity) jika norma ahli bercanggah dengan moral peribadi kaunselor.", "jawapan": "Kedangkalan memahami orientasi hidup unik (worldview) bakal merosakkan proses tafsiran. Kaunselor dilarang menjatuhkan syariat peribadi dan wajib menyemak landasan acuan RESPECTFUL." },
+                { "soalan": "Apakah konsep pemenjaraan Nilai Kendiri Kaunselor secara etika (Ethical Bracketing)?", "jawapan": "Saat pertembungan isu moral (agama, seks, penceraian) meletus, kaunselor diwajibkan secara mutlak mengunci nilai anutannya di luar jendela dan memfokus objektif pencapaian penderitaan semata-mata." },
+                { "soalan": "Apakah bahaya mengaplikasikan Teknik Kaunseling berbentuk radikal membongkar parut kelam (unfinished business)?", "jawapan": "Kaedah ekstrem berupaya memuntahkan tsunami reaksi trauma berantai sekiranya kaunselor cetek rasional kemahiran pemulihan dan membiarkan pesakit hanyut bersendirian pasca kejutan emosi." },
+                { "soalan": "Bagaimanakah fasilitator menzahirkan pengekalan kualiti amalan kecekapan amali (Competency) mereka di tahap puncak?", "jawapan": "Iltizam profesional ini direalisasikan menerusi kitaran pembelajaran klinikal seliaan berterusan, melanggani kaunseling bagi dirinya, dan menelaah jurnal intervensi teknik terkini (evidence-based)." },
+                { "soalan": "Di tahap perbincangan awal kelompok, apakah peringatan rutin mengenai kawalan rahsia ahli?", "jawapan": "Ketua memacakkan peringatan tegas bahawa meskipun rahsia sesi dijaga ketat di bilik, perkongsian metod ilmu pengajaran/kemahiran dipelajari adalah halal dijaja di luar, asalkan identiti pencerita dirahsiakan." },
+                { "soalan": "Apabila wujudnya elemen kecaman budaya (bias) dan sentimen prejudis oleh ahli kelompok, bagaimanakah cara kaunselor bertindak?", "jawapan": "Kaunselor pantas memotong arus komunikasi tanpa herdikan, lalu memutarkan persepsi ahli yang rasis tadi supaya menjenguk naratif empati dari kasut individu tertindas." },
+                { "soalan": "Apakah kesimpulan bahaya bagi gaya komunikasi kaunselor yang menggunakan nada simpati melampau bergaul 'kesian' kepada ahli rentan OKU?", "jawapan": "Intonasi simpati berlebihan melemahkan pemerkasaan (empowerment) mental. Kaunselor sebetulnya wajar menggunakan intonasi rata, profesional, dan berbual secara langsung ke arah membugar keupayaan sisa mereka." },
+                { "soalan": "Apakah faedah menyingkap sebab musabab pendarahan komitmen kelompok (dropping out) oleh pesakit berisiko?", "jawapan": "Kaunselor berpotensi menampal lompang intervensi teknik fasilitator yang mungkin gagal menampung ledakan stres lalu merangka rujukan susulan bagi menghentikan luka pendarahan emosi ahli tersebut." },
+                { "soalan": "Apakah tanggungjawab spesifik ketua bagi mengatasi risiko kambing hitam (scapegoating) di tengah kekalutan isu?", "jawapan": "Ketua berperanan sebagai pengemudi radar dinamika sentral. Apabila dominasi majoriti menghimpit satu minoriti, ketua memecahkan polarisasi lalu menetapkan teguran konfrantasi yang terarah pada kelakuan (bukan cemuhan peribadi)." },
+                { "soalan": "Bolehkah ahli bersosial dan bertukar informasi intim menerusi Whatsapp di luar pantauan sesi formal kelompok?", "jawapan": "Perkara ini dibimbangi bakal memecahkan sub-group dan kerahsiaan (Dual relationship). Garis amaran interaksi luaran perlu dibentangkan sejak fasa Izin Termaklum sebagai pendinding kebocoran rahsia halus." },
+                { "soalan": "Apakah pendekatan kaunselor jika wujud percanggahan amalan orientasi seksual minoriti dengan agama anutan fasilitator?", "jawapan": "Berdasarkan prinsip bebas syarat (ethical bracketing), jika jalan buntu gagal diselesaikan hasil kecelaruan peribadi fasilitator, rujukan pemindahan penyelia yang kompeten wajib dilakukan." },
+                { "soalan": "Apakah model amali yang dirangka bagi memastikan fasilitator mengekalkan lensa kecekapan latar belbagai corak sosial?", "jawapan": "Mengadaptasi model senarai semak 'RESPECTFUL', iaitu menelusuri penapisan isu identiti bangsa, ekonomi, kecelaruan usia, kasta perbandaran, serta profil kematangan minda seseorang klien tanpa kecacatan bias." },
+                { "soalan": "Sebutkan satu parameter pantang larang kaunselor mengurus konflik emosional bagi populasi mandatori hukuman perintah?", "jawapan": "Ketua diharamkan sesekali meletak jawapan konfrantasi berbalas keras terhadap penolakan berpanjangan mereka. Akar rintangan tersebut diselami menggunakan refleksi tanpa ugutan denda tambahan." },
+                { "soalan": "Bagaimanakah kaunselor menggunakan strategi pasca-sesi (debriefing) bagi membendung risiko lemas psikologikal pesakit yang rapuh?", "jawapan": "Fasilitator bertanyakan maklum balas emosi yang tersisa (check out process) sebelum lafaz bersurai; sekiranya reaksi krisis wujud, mangsa diiring ke dalam ruang persendirian penenang emosi (grounding)." },
+                { "soalan": "Apakah kesalahan sekular pendedahan kendiri melulu (self-disclosure) yang ditunjukkan oleh ahli kelompok?", "jawapan": "Tindakan gopoh memuntahkan kisah peribadi kronik pada pertemuan pertama tanpa asas persahabatan membina teras perisai kelemahan akan mengakibatkan pencerita diganggu sindrom penyesalan penolakan kelompok (vulnerability trauma)." },
+                { "soalan": "Apakah panduan merumuskan garis peraturan batas perilaku sewaktu mula fasa taklimat Peraturan Kumpulan?", "jawapan": "Ia harus dicernakan dalam nada hormat. Semua perbuatan menghukum sesama ahli tidak dibenarkan, komunikasi digilirkan secara saksama, dan kebebasan izin berdiam diri adalah hak mutlak setiap pengikut takhta rawatan." },
+                { "soalan": "Seandainya amalan kelompok menjerumuskan kaunselor kepada keletihan belas kasihan (compassion fatigue), apakah tindakan sokongan moral yang patut dicari?", "jawapan": "Selain sesi penyeliaan bersama klinikal atasan, kaunselor wajib menyorong tubuh memohon perkhidmatan sokongan kaunseling terapis individu kepada dirinya bagi merawat luka krisis emosi fasilitator (Countertransference burn-out)." },
+                { "soalan": "Secara holistiknya, kelompok tidak sepatutnya dibina menjadi landasan tambahan bagi sistem menindas komuniti malang. Terangkan?", "jawapan": "Ruang terapi harus dipagari ketat dengan tiang prinsip Keadilan Sosial (Social justice). Kelompok wajib bertindak sebagai pelindung selamat (advocate buffer) yang mendayaupayakan keberanian ahli mematahkan momokan zalim rasisme persekitarannya." }
             ],
             "pembentukan": [
-                { "soalan": "Mengapakah proses pembentukan kelompok dianggap kritikal?", "jawapan": "Satu pembentukan kelompok yang terancang akan menentukan tahap keberkesanan intervensi, mengurangkan risiko keciciran ahli (dropout), serta membina dinamika kumpulan yang sihat." },
-                { "soalan": "Apakah langkah pertama dalam merancang sesuatu kelompok kaunseling?", "jawapan": "Kaunselor wajib menyediakan satu kertas cadangan (proposal) yang jelas dan mantap. Proposal ini bertindak sebagai alat komunikasi rasmi dengan pihak pentadbir dan panduan pelaksanaan." },
-                { "soalan": "Nyatakan empat komponen wajib yang perlu ada dalam sesebuah proposal kelompok.", "jawapan": "Komponen tersebut merangkumi Rasional program, Objektif (utama dan khusus), Aspek Praktikal (saiz, tempoh, tempat), serta Prosedur dan Penilaian." },
-                { "soalan": "Apakah kriteria pembinaan Objektif yang baik dalam proposal kelompok?", "jawapan": "Objektif mestilah spesifik, logik untuk diukur pencapaiannya, dan mampu dilaksanakan secara realistik dalam tempoh masa yang dirancang." },
-                { "soalan": "Apakah rintangan atau cabaran awal yang lazim wujud ketika menubuhkan kelompok?", "jawapan": "Cabaran selalunya datang daripada kekangan sistem, seperti halangan dasar (polisi), kekurangan peruntukan kewangan, serta kurangnya kesedaran mengenai manfaat kelompok oleh pihak pengurusan." },
-                { "soalan": "Bagaimanakah strategi bagi menghadapi kekangan polisi dan kewangan institusi?", "jawapan": "Kaunselor harus mempergiat kempen pendidikan psikologi (psychoeducation) dan membentangkan proposal terus kepada pihak pemegang taruh (advocacy) bagi meyakinkan mereka." },
-                { "soalan": "Senaraikan kaedah yang efektif untuk merekrut calon kelompok.", "jawapan": "Calon boleh direkrut melalui edaran poster, hebahan media sosial, rujukan agensi berkaitan, dan rujukan khusus secara terus oleh kaunselor atau rakan sekerja." },
-                { "soalan": "Apakah fungsi utama sesi Orientasi atau Pra-kelompok (Preliminary Session)?", "jawapan": "Sesi ini bertujuan untuk menyaring calon bersesuaian, membincangkan jangkaan kelompok, menerangkan peraturan keselamatan, serta membina asas kepercayaan." },
-                { "soalan": "Berikan contoh profil individu yang tidak sesuai menyertai sesi kaunseling kelompok.", "jawapan": "Individu dengan risiko membunuh diri, mengalami psikosis akut, terlalu mementingkan diri (highly self-centered), dan terlalu defensif adalah kurang sesuai dan memerlukan sesi individu." },
-                { "soalan": "Sekiranya ada calon ditolak, apakah langkah beretika yang wajib diambil oleh kaunselor?", "jawapan": "Kaunselor perlu berterus terang dan sensitif tentang sebab penolakan. Kaunselor kemudiannya wajar menawarkan khidmat kaunseling individu atau merujuk mereka kepada pihak profesional lain." },
-                { "soalan": "Apakah perbezaan struktur antara Kelompok Terbuka (Open Group) dan Kelompok Tertutup (Closed Group)?", "jawapan": "Kelompok terbuka membenarkan pertukaran serta penambahan ahli baharu secara berterusan. Sebaliknya, kelompok tertutup mengekalkan komposisi ahli yang sama tanpa ahli baharu sehingga program tamat." },
-                { "soalan": "Apakah impak komposisi Kelompok Homogen (Homogeneous) terhadap dinamika ahli?", "jawapan": "Disebabkan semua ahlinya berkongsi jenis masalah yang serupa (contohnya stres akademik), tahap kejelikitan (cohesion) mereka akan terbina dengan lebih pantas dan kukuh." },
-                { "soalan": "Berapakah purata saiz ideal untuk kelompok dewasa dan kanak-kanak?", "jawapan": "Untuk dewasa, saiz kelompok terbaik adalah sekitar lapan orang, manakala bagi kanak-kanak saiz yang disyorkan lebih kecil iaitu tiga hingga empat orang." },
-                { "soalan": "Apakah spesifikasi tempat perjumpaan kelompok yang dianggap kondusif?", "jawapan": "Bilik harus memberikan privasi yang ketat, terhindar daripada gangguan bunyi, dan kerusi harus disusun secara bulatan untuk memudahkan komunikasi mata bertentang mata." },
-                { "soalan": "Apakah perkara yang disentuh di bawah Peraturan Kelompok semasa sesi orientasi?", "jawapan": "Sesi ini menekankan etika memegang kerahsiaan, peraturan komunikasi (satu suara bercakap pada satu masa), komitmen kehadiran ahli, serta saling menghormati." }
+                { "soalan": "Mengapakah proses pembentukan kelompok dianggap sangat kritikal?", "jawapan": "Satu pembentukan yang terancang akan menentukan tahap keberkesanan intervensi, mengurangkan risiko keciciran ahli (dropout), serta membina asas dinamika yang sihat." },
+                { "soalan": "Apakah langkah pertama dalam merancang penubuhan sesuatu kelompok kaunseling?", "jawapan": "Kaunselor wajib menyediakan satu kertas cadangan (proposal) bertulis yang mantap sebagai alat komunikasi rasmi dengan pihak pemegang taruh (stakeholder)." },
+                { "soalan": "Nyatakan empat komponen wajib yang perlu ada dalam sesebuah proposal kelompok.", "jawapan": "Komponen tersebut merangkumi Rasional program, Objektif (utama dan khusus), Aspek Praktikal (saiz, durasi, tempat), serta perincian Prosedur dan Penilaian." },
+                { "soalan": "Apakah kriteria pembinaan Objektif yang baik di dalam penulisan proposal kelompok?", "jawapan": "Objektif mestilah bersifat spesifik, logik, jelas, boleh diukur pencapaian sasarannya, dan mampu direalisasikan dalam kekangan masa yang ditetapkan." },
+                { "soalan": "Apakah rintangan atau cabaran awal yang lazim wujud ketika permohonan menubuhkan kelompok?", "jawapan": "Cabaran selalunya datang daripada kekangan sistem pentadbiran, dasar prosedur yang rumit, kekurangan bajet kewangan, serta kurang kesedaran mengenai keberkesanan kelompok." },
+                { "soalan": "Bagaimanakah strategi paling mampan bagi menghadapi bantahan polisi agensi dalam perlaksanaan kelompok?", "jawapan": "Kaunselor harus mempergiat kempen pendedahan pendidikan (psychoeducation) dan menggunakan platform advokasi bagi membentangkan fakta rasional proposal dengan meyakinkan." },
+                { "soalan": "Senaraikan kaedah yang praktikal dan berkesan untuk mempromosi atau merekrut calon klien kelompok.", "jawapan": "Calon boleh dikesan dan ditarik menerusi edaran poster fizikal, hebahan awam (digital board), saringan media sosial, mahupun rujukan terus daripada kaunselor." },
+                { "soalan": "Apakah kelebihan 'Rujukan Kaunselor' berbanding kaedah rekrut melalui media sosial rawak?", "jawapan": "Rujukan pakar adalah jauh lebih persis dan selamat kerana penilaian klinikal berhubung masalah dan profil calon bersesuaian telah ditapis secara awal berbanding serbuan am." },
+                { "soalan": "Apakah fungsi utama sesi Temu Bual (Preliminary Session/Screening) dilaksanakan secara individu?", "jawapan": "Sesi bersemuka ringkas ini ditumpukan untuk menyaring kelayakan calon, menimbang tahap motivasi kerelaan, mengorek potensi sejarah kecederaan awal, dan memberi taklimat faedah program." },
+                { "soalan": "Berikan contoh profil psikiatri pesakit yang diharamkan menyertai sesi terapi fasa kelompok.", "jawapan": "Individu dengan isyarat aktif membunuh diri, psikosis akut, terlalu manipulatif (sociopathic), terlalu mementingkan diri (highly self-centered), dan berada di hujung tanduk krisis terlampau adalah ditegah." },
+                { "soalan": "Sekiranya ada calon terpaksa ditolak pendaftarannya, apakah perlakuan beretika yang wajib diambil ketua?", "jawapan": "Ketua perlu melahirkan keengganan penuh diplomasi, membentangkan sensitiviti sebab penolakan, dan tanpa berlengah merujuk klien terbabit memulakan kaedah Kaunseling Individu." },
+                { "soalan": "Apakah perbezaan struktur laluan di antara Kelompok Terbuka (Open Group) dan Kelompok Tertutup (Closed Group)?", "jawapan": "Kelompok Terbuka menerima pengalihan atau kemasukan ahli ganti sepanjang kitaran hidupnya, manakala Kelompok Tertutup mengunci kemasukan pendaftaran sehinggalah matlamat tempoh penamat terbubar rasmi." },
+                { "soalan": "Apakah impak demografi Kelompok Homogen (Homogeneous) terhadap momentum dinamika pesakit?", "jawapan": "Kesamaan tumpuan krisis yang dikongsi jemaah (misalnya trauma putus cinta) mempercepatkan penghasilan suhu empati dan memperkukuh kejelikitan (cohesion) secara intensif." },
+                { "soalan": "Berapakah kadar jumlah peserta ideal bagi merangka kelompok perjumpaan berskala dewasa dan kanak-kanak?", "jawapan": "Bagi dewasa, lingkungan keberkesanan interaksi optimum ialah sekitar 8 orang, manakala ruang liputan fokus kanak-kanak harus disempitkan sekecil angka 3 hingga 4 orang." },
+                { "soalan": "Apakah spesifikasi prasyarat kerusi dan kawasan tempat perjumpaan kelompok yang dinilai paling kondusif?", "jawapan": "Ruangan bilik harus membekalkan jaminan privasi rapi, sunyi tanpa sebarang gangguan luar, tanpa penghadang perabot besar (meja), dan kerusi klien disusun merangkumi putaran bulatan." },
+                { "soalan": "Apakah yang dimaksudkan dengan justifikasi klinikal dalam komponen 'Rasional' penulisan proposal kelompok?", "jawapan": "Bahagian ini memaparkan penjelasan kukuh mengenai latar belakang masalah yang menimpa sasaran berserta hujah membuktikan perjumpaan kelompok merupakan intervensi penawar paling jitu." },
+                { "soalan": "Nyatakan tiga elemen pemantauan berkesan di bawah bab 'Penilaian' (Evaluation) pasca-program.", "jawapan": "Analisis perubahan skala pra-pasca ujian pesakit, instrumen borang aduan kepuasan di hujung perjumpaan, berserta rakaman jurnal pemerhatian keberkesanan sesi di pihak ketua kaunselor sendiri." },
+                { "soalan": "Mengapakah Kelompok Bersifat Jangka Sederhana/Tetap dipandang lebih ampuh berbanding kelompok tiada tarikh tamat (unlimited)?", "jawapan": "Kerangka masa terikat (time-limited) mengepam motivasi kesungguhan klien memfokuskan pendedahan mendesak lalu bertindak lekas membuat asimilasi tingkah laku tanpa culas berlengah-lengah." },
+                { "soalan": "Huraikan perbezaan bentuk sesi antara saringan preliminary berbanding fasa Pra-Kelompok secara umum.", "jawapan": "Saringan temuduga direncana secara persendirian bersama pakar (1 to 1) untuk pengkelasan masalah, berbanding Pra-Kelompok di mana semua ahli suai kenal berhimpun menyelami dasar ekspektasi terapi berkumpulan." },
+                { "soalan": "Apakah tujuan murni pelaksanaan pertemuan beramai-ramai dalam sesi taklimat Pra-Kelompok?", "jawapan": "Sesi penyatuan sulung ini membentangkan padang persiapan taklimat kontrak rahsia, penjelasan komitmen ahli, serta memahat struktur jangkaan (harapan) buat semua." },
+                { "soalan": "Adakah pertemuan Pra-Kelompok dibolehkan bergabung dengan peringkat temu duga saringan awal (Screening)?", "jawapan": "Boleh. Bagi mengatasi kepincangan operasi jadual terikat atau masalah lojistik peserta berkumpul banyak kali, sesi saringan perseorangan dapat disatukan terus masuk agenda am Pra-Kelompok." },
+                { "soalan": "Apakah yang patut dibincangkan semasa sesi taklimat berkenaan Tanggungjawab Ahli?", "jawapan": "Ketua mengingatkan kewajipan penepatan jadual masuk, peruntukan etika mencurah isi rahsia, batas pencerobohan ruang fizikal, serta kewajipan memberikan respons saling bergandingan." },
+                { "soalan": "Bagaimanakah tanggapan meleset mengenai 'Kelompok Menyelesaikan Segala Badai Hidup Luar' ditangani kaunselor?", "jawapan": "Kaunselor membentangkan realiti klinikal dengan mengajar pemikiran pragmatik; kelompok semata-mata gelanggang mikrokosma latihan menajamkan resiliensi amali, bukan formula magis memadam krisis dunia nyata serta-merta." },
+                { "soalan": "Mengapakah ada pihak mendakwa pertemuan kelompok bersifat pura-pura (superficial) tanpa kejujuran nurani?", "jawapan": "Ini dikesan tatkala dinamika kumpulan disekat asakan ketakutan menzahirkan kritikan (terperangkap dek tabir sopan santun) dan penolakan penerokaan is-isu intim oleh ahli bertopeng tebal." },
+                { "soalan": "Apakah tindakan intervensi bagi pelajar yang tidak menunjukkan stres berat namun mahu menyertai 'Kelompok Stres Akademik'?", "jawapan": "Kehadirannya dipertimbangkan jika motivasi profilnya sejajar matlamat, tetapi jika terbukti kumpulan sasar bergelut stres tahap pertengahan (sederhana) berbeza dari profil asalnya, penolakan harmoni harus direncana." },
+                { "soalan": "Apakah amaran keselamatan dalam 'Ground Rules' berkait rapat dengan pencerobohan ruang berbicara?", "jawapan": "Ikrar etika menegaskan keabsahan peraturan pertuturan di mana hanya ada satu suara diizinkan berbicara dalam satu lafaz masa, berserta jaminan pembebasan bersuara ('hak pas' bicara) bagi pesakit yang tertekan." },
+                { "soalan": "Mengapakah kanak-kanak/remaja ditegah masuk menumpang dalam Kelompok campur umur Dewasa?", "jawapan": "Kecelaruan usia menumbangkan landasan kognitif sepunya. Gaya daya tindak krisis (coping) serta bahasa orang dewasa adalah terlalu berat atau kompleks bagi daya saringan emosi budak minor (Heterogeneous yang membunuh keberkesanan)." },
+                { "soalan": "Apakah jenis kelompok yang khusus mensasarkan sasaran mangsa trauma spesifik (seperti inses/ketagihan)?", "jawapan": "Krisis tertumpu seperti ini memerlukan gandingan amalan pendekatan Berpusatkan Ketua (Leader-Directed) di mana bimbingan arahan dan penjagaan emosi diacu secara cermat dan memegang rentak yang teliti." },
+                { "soalan": "Sebutkan komponen prosedur pengambilan peserta bagi fasa perangkaan awal program di pelan kertas cadangan.", "jawapan": "Merangkumi perincian modus penyebaran hebahan am (iklan berpusat), mekanik tapisan Temuduga Saringan (siapa yang menemu ramah), dan kriteria kelayakan pemutus borang terma keanggotaan." },
+                { "soalan": "Apakah fokus pemerhatian di luar jangka (counter-effect) yang patut diselidik ketua ketika menyaring temuduga?", "jawapan": "Kaunselor mengimbas kalau-kalau ada watak calon yang bakal meledakkan sentimen berahi kawalan kumpulan (mendominasi), memonopoli suara pesakit lompang, atau bersifat toksik mematahkan keberanian moral pelatih kumpulan itu." }
             ],
             "awal": [
                 { "soalan": "Sebutkan dua karakteristik dominan ahli ketika proses awal kelompok bermula.", "jawapan": "Ahli umumnya mula menunjukkan kebimbangan tahap tinggi akibat jangkaan yang kabur, serta wujudnya sifat pendiam, kaku, pasif, dan sikap berhati-hati." },
-                { "soalan": "Mengapakah ada sebahagian ahli yang terus menunjukkan sikap penolakan awal?", "jawapan": "Penolakan terjadi kerana tahap kepercayaan yang masih sifar terhadap peserta lain. Kadangkala ia dipengaruhi amalan budaya yang melarang perbincangan hal peribadi kepada orang luar." },
-                { "soalan": "Apakah impak kerosakan jika 'agenda tersembunyi' (hidden agenda) tidak dikendalikan kaunselor?", "jawapan": "Kelompok akan dipenuhi sikap syak wasangka yang menebal, hilang sifat selamat, ahli menjadi defensif, serta komunikasi dipenuhi dengan sindiran atau bermusuhan." },
-                { "soalan": "Apakah yang dimaksudkan dengan konflik pada tahap awal?", "jawapan": "Konflik awal adalah letusan emosi akibat salah faham, sifat tidak suka, atau prasangka di kalangan ahli. Kaunselor perlu bertindak mendidik mereka mengatasi pertembungan tersebut secara sihat." },
-                { "soalan": "Semasa peringkat awal, bagaimanakah ahli memfokuskan penceritaan mereka?", "jawapan": "Banyak ahli cenderung menggunakan mekanisme mengelak dengan bercerita tentang isu orang lain, berbanding membuat penerokaan tentang isu yang menghantui diri mereka sendiri." },
-                { "soalan": "Bagaimanakah kaunselor tahu bahawa elemen kepercayaan sudah mula terbina?", "jawapan": "Kepercayaan dikesan apabila ahli tanpa paksaan meluahkan emosi dengan telus, sanggup berdepan risiko menunjukkan kelemahan diri, serta meletakkan matlamat penyelesaian." },
-                { "soalan": "Apakah tanda-tanda situasi tidak percaya sedang menguasai kelompok?", "jawapan": "Kumpulan dikawal oleh kesenyapan, perbualan terlalu umum secara intelektual tanpa penghayatan, perhubungan cetek (superficial), dan ahli hanya menunggu arahan kaunselor untuk bercakap." },
-                { "soalan": "Bagaimanakah kemahiran mendengar dengan model SOLER menyumbang kepada empati?", "jawapan": "Ia adalah bahasa tubuh yang memberikan tumpuan penuh dengan mata dan kedudukan badan. Ini memancarkan sikap tulen tanpa penilaian menghukum (non-judgmental) yang membina ruang pendedahan selamat." },
-                { "soalan": "Apakah akibat jika konfrantasi awal dilakukan secara melulu dan agresif oleh fasilitator?", "jawapan": "Konfrantasi yang agresif tanpa asas empati akan menyebabkan klien terus membina tembok defensif yang tebal, menghasilkan reaksi penolakan yang membantutkan keberkesanan sesi." },
-                { "soalan": "Sebutkan antara sikap kaunselor yang mematikan perkembangan positif ahli.", "jawapan": "Perhatian kaunselor mudah terganggu, pantas memberikan nasihat solusi, memonopoli perbualan, serta melayan kata-kata yang diucap secara zahir tanpa mengendahkan petunjuk bahasa tubuh." },
-                { "soalan": "Bagaimanakah penentuan Matlamat Personal patut direka?", "jawapan": "Matlamat personal yang kabur perlu dibimbing oleh kaunselor supaya lebih spesifik dan terperinci. Kontrak dan tugasan juga harus digunakan sebagai alat peneguhan untuk capai matlamat ini." },
-                { "soalan": "Apakah maksud 'Norma Kelompok'?", "jawapan": "Norma kelompok merujuk kepada sistem kepercayaan dan jangkaan piawaian tingkah laku yang diterima bersama oleh ahli demi menjamin interaksi dapat berlangsung dengan lancar." },
-                { "soalan": "Apakah amaran penting dalam kaedah pengajaran (teaching) ketika membina norma?", "jawapan": "Kaunselor dilarang memuntahkan segala peraturan sekaligus seperti mengajar kelas teori. Ia haruslah ditunjukkan secara bertahap (modeling) supaya tiada kebergantungan melampau." },
-                { "soalan": "Apakah manfaat latihan mencatat jurnal atau diari kepada perkembangan ahli?", "jawapan": "Jurnal merekod aliran pemikiran dan luahan emosi ahli terhadap pengalaman sesi. Latihan ini membina kemahiran penilaian kendiri dalam menilai setiap reaksi mereka terhadap satu-satu kejadian." },
-                { "soalan": "Bagaimanakah kadar penstrukturan (structuring) harus dikelola oleh kaunselor?", "jawapan": "Ia harus dikawal secara seimbang; jika terlalu terstruktur ahli akan cepat bosan dan pasif, namun jika terlalu bebas (liberal), mereka akan bingung dan mengalami tahap kebimbangan yang tinggi." }
+                { "soalan": "Mengapakah ada sebahagian ahli yang terus menunjukkan sikap penolakan seawal pertemuan sulung?", "jawapan": "Penolakan ini lazimnya dibaluti tembok ketiadaan kepercayaan mutlak, rintangan budaya terhadap pembongkaran maruah di khalayak umum, serta kegelisahan batin berkait kritikan." },
+                { "soalan": "Apakah impak kerosakan jika 'agenda tersembunyi' (hidden agenda) tidak segera dibedah dan dirawat kaunselor?", "jawapan": "Udara bilik dikepung sangsi beracun, keintiman dibenam ketakutan tebal, lalu membuahkan penzahiran perbualan cetek serta pendedahan penuh sifat bermusuhan dan defensif yang ketara." },
+                { "soalan": "Apakah yang dimaksudkan dengan letusan konflik awal di tahap ini?", "jawapan": "Ia letusan rintangan atau bibit rasa ketidaksenangan yang wujud ekoran serba-salah, prejudis peribadi, atau pertembungan karakter, yang wajib didepani sebagai medan melatih pesakit menyelesaikan persengketaan komunikasi secara sihat." },
+                { "soalan": "Semasa peringkat awal perbualan, bagaimanakah ahli sering menumpukan paksi penceritaan terapi mereka?", "jawapan": "Pesakit gemar mengekalkan zon selesa dengan menjaja kompilasi kisah luaran orang lain atau situasi lampau, dan rakus mengelak membedah is-isu dalaman peribadinya sendiri." },
+                { "soalan": "Bagaimanakah kaunselor tahu bahawa elemen Kepercayaan (Trust) sudah mula mencambah tunasnya?", "jawapan": "Akar kepercayaan teguh apabila pesakit sukarela memuntahkan luahan keperitan, bersedia mengambil risiko mendedahkan identiti kerentanannya, tanpa dipaksa untuk terus membincangkan pencarian solusi rawatan peribadi." },
+                { "soalan": "Apakah manifestasi isyarat Situasi Tiada Kepercayaan yang memeluk cengkaman di dalam kelompok?", "jawapan": "Kumpulan dikawal oleh kaku senyap sunyi, penceritaan dipenuhi laras bahasa kabur/umum secara dangkal (intelektualisasi), kualiti respon hambar (superficial), dan menanti penuh bergantung atas setiap cebis telunjuk langkah kaunselor semata." },
+                { "soalan": "Bagaimanakah kaedah mendengar aktif (model SOLER) menyumbang ketulenan corak empati kaunselor?", "jawapan": "Ia membongkar pembacaan bahasa tubuh tulen berfokus dengan isyarat renungan jitu mata bertentang mata, menjana postur mesra dan terbuka, menyalurkan sinar penerimaan tanpa kacamata penghakiman yang ketat." },
+                { "soalan": "Apakah akibat membinasakan jika hentaman konfrontasi peringkat awal dilakukan melulu agresif oleh ketua rawatan?", "jawapan": "Pencerobohan konfrontasi kejam sebelum tiang kepercayaan bertapak memicu pertahanan diri klien untuk membenihkan ketegangan dendam dan langsung menembak mati penerokaan peribadi di pusingan berikutnya." },
+                { "soalan": "Sebutkan antara tabiat kualiti lisan kaunselor yang mematikan perkembangan roh pembinaan kumpulan ahli berinteraksi.", "jawapan": "Tabiat memberi leteran nasihat terburu-buru, dominasi cakap sendirian melampau, bersoal siasat tanpa henti bagai detektif (interrogation), dan penumpuan memetik maklumat lisan lurus membuang kepekaan renungan bahasa bukan lisan pesakit." },
+                { "soalan": "Bagaimanakah pembentukan garisan Matlamat Personal pesakit patut direka gubah bersama fasilitator?", "jawapan": "Matlamat samar atau cetek (contoh 'saya mahu bergaul elok') wajib dibedah halus menjadi pelan operasi spesifik yang digalas kukuh dengan alat ikatan kontrak kerja mahupun cabaran amali tugasan tingkah laku (homework)." },
+                { "soalan": "Apakah definisi 'Norma Kelompok' dari segi pemahaman amalan am sesebuah dinamika rawatan?", "jawapan": "Talian norma menyingkap kerangka rukun jangkaan atau pematuhan piawaian kelakuan sosial (sedar atau bawah sedar) yang diangkat bersama demi menjamin fungsi interaksi lancar lagi berimpak." },
+                { "soalan": "Apakah amaran penting dalam pendekatan gaya pensyarah (too much teaching) di fasa membentuk norma?", "jawapan": "Ketua sama sekali dihalang mewahyukan selambak peraturan statik secara serentak persis kelas ceramah; ia harus dibenihkan perlahan-lahan (model pembuktian teladan ketua) demi mengelak keracunan pasif dan keterbergantungan sifar daya inisiatif ahli." },
+                { "soalan": "Apakah manfaat latihan menabur diari tinta penulisan Jurnal terhadap pembugaran emosi ahli luar sesi?", "jawapan": "Catatan mencatat rakaman komprehensif aliran reaksi sentimen atau kemelut minda yang menjengah minda klien pasca rawatan. Ia menyuburkan amalan reflektif kendiri bagi membaca rentak kekerapan reaksi derita saat mendepani ujian hidup." },
+                { "soalan": "Bagaimanakah kadar cengkaman Penstrukturan (structuring) operasi kumpulan seharusnya dikelola berpatutan oleh fasilitator?", "jawapan": "Tali kawalan harus dijaga harmoni saksama. Regangan disiplin melampau mematikan inisiatif pasif; andai talinya sengaja dilepas total terbiar tiada kerangka pandu arah akan membibitkan sesat panik keliru serta kecelaruan arah yang menakutkan para penderita rawatan." },
+                { "soalan": "Mengapakah ada segelintir ahli menterjemahkan kebimbangan awal mereka melalui desakan 'mencari penyelesaian segera'?", "jawapan": "Mereka mahu meredakan keresahan dan lari daripada proses pendedahan kelemahan peribadi yang meletihkan, lalu secara defensif memaksa kelompok bertindak pantas sekadar memadam simptom tanpa meneroka punca dasar trauma (quick-fix agenda)." },
+                { "soalan": "Apakah corak kelakuan 'pemerhatian awal' ahli terhadap watak fasilitator kumpulan?", "jawapan": "Klien dengan senyap menghadam taktik tindak balas perawakan riak empati fasilitator saat berhadapan kritikan awal, menilai ketelusan luahan emosi fasilitator (initial expression) bagi menyemak paras jaminan perlindungan maruahnya." },
+                { "soalan": "Mengapakah norma kelompok yang digariskan secara implicit (tidak nyata) lebih sukar dikenal pasti?", "jawapan": "Kerana rukun tingkah laku implisit meresap menerusi pengaruh acuan tanggapan stereotaip masa lalu penderita atau melalui pengaruh meniru gaya isyarat pemodelan kaunselor semata tanpa warkah persetujuan rasmi lisan diumumkan." },
+                { "soalan": "Apakah maksud dan peranan tingkah laku melayan dan mendengar 'dengan telinga selektif' (selective hearing)?", "jawapan": "Ia adalah kecacatan empati fasilitator yang mengutip sekerat-sekerat frasa pilihan mengikut kepentingan telahan peribadi tanpa menangkap realiti menyeluruh yang hendak dizahirkan mangsa rawatan." },
+                { "soalan": "Apakah dua cabang matlamat di tahap awal yang perlu dijajarkan sebelum meneruskan fasa bekerja kelompok?", "jawapan": "Setiap individu diwajibkan memahami rentak pelaburan 'Matlamat Kelompok' (manfaat kejelikitan hubungan sesama ahli komuniti rawatan) seiring merungkaikan 'Matlamat Personal' penderitaan rawatan intim masing-masing." },
+                { "soalan": "Apakah yang membezakan di antara rujukan Fokus Diri berbanding tumpuan kepada Fokus Luar (Orang Lain)?", "jawapan": "Fokus diri menuntut penelanjangan pendedahan kerentanan is-isu parut sejarah pemilik (memahami emosi yang disekat). Fokus terhadap watak sampingan sengaja dibina selaku pelindung mengalihkan bedah rawatan kaunselor (mekanisme elak)." },
+                { "soalan": "Mengapakah amalan ketidakkonsistenan fasilitator (verbal versus bukan verbal) menjejaskan pertumbuhan tahap awal?", "jawapan": "Klien dapat menghidu corak hipokrasi atau kepura-puraan simpati. Akibatnya pesakit merobohkan tiang perlindungan rawatan kerana beranggapan fasilitator tersebut hilang ketulenan kualiti mesra (genuineness)." },
+                { "soalan": "Apakah signifikansi meletakkan bebanan Pembahagian Tanggungjawab merata di bahu setiap peserta?", "jawapan": "Keseimbangan peranan memaksa semua berinisiatif, meruntuhkan ego kuasa autokratik kaunselor serba tahu, mengelak penyakit keletihan emosi (burnout) fasilitator lantas mempercepatkan pendemokrasian autonomi klien mandiri." },
+                { "soalan": "Bagaimanakah corak gaya 'Warm Up' (pemanasan awal) mengelak kejutan pendedahan mengejut seawal perjumpaan hari itu?", "jawapan": "Kaunselor menggerakkan sesi pasca-helo dengan mengimbas lafaz pengajaran rumusan titik rawatan sesi kelmarin (linking) lalu membukakan peluang ahli menyelak pengalaman perkembangan tingkah laku kerja amali yang dititipkan tempoh hari." },
+                { "soalan": "Sebutkan satu contoh norma eksplisit kumpulan (kelakuan yang secara lantang dituntut pematuhannya).", "jawapan": "Arahan jitu melontarkan wajipan hadir ke gelanggang rawatan bertepatan masa, keterlibatan aktif bersuara dengan telus, dan ketetapan bercakap menumpukan bahasa bersemuka mata ke mata antara saksi interaksi kumpulan." },
+                { "soalan": "Bolehkah kaedah merakam jurnal diluahkan dengan format surat kepada pelakunya yang sebenar tanpa pengeposan rasmi?", "jawapan": "Boleh. Format surat luahan kemarahan tidak dikirim bertindak sebagai alat detoksifikasi ledakan tekanan tanpa perlu meletakkan pesakit itu tersepit berhadapan impak ancaman fizikal pendera asalnya di dunia nyata." },
+                { "soalan": "Apakah bahaya dominasi soalan 'Tertutup' oleh pihak kaunselor di tahap perbincangan sulung interaksi kumpulan?", "jawapan": "Asakan siasatan persoalan berjenis ya atau tidak yang meleret-leret meranapkan penerokaan emosi deskriptif mangsa dan menyulap format terapi menyerupai tribunal mahkamah yang menakutkan pertahanan peribadi ahli." },
+                { "soalan": "Bagaimanakah penentuan Matlamat Spesifik (OKU) dirangka dalam satu corak Kelompok Homogen?", "jawapan": "Arah objektif difokus eksklusif ke arah peluahan derita diskriminasi keupayaan, menggali jalan membebaskan simpulan stres kecacatan, serta membugar ketajaman bergaul mencari sistem sokongan kebajikan khas pesakit terbabit." },
+                { "soalan": "Adakah sifat pasif atau keengganan berpartisipasi pada tahap awal sentiasa didorong rintangan emosi semata-mata?", "jawapan": "Tidak. Kekakuan awal berkemungkinan berakar daripada pematuhan kuat terhadap pantang larang profil budaya penderita; sesetengah kasta menganggap rahsia keaiban rumah adalah dosa besar jika dijaja pada orang dagang yang belum erat." },
+                { "soalan": "Apakah nilai terpenting bagi kelancaran pembukaan pembentukan kelompok tahap pertama secara am?", "jawapan": "Perhatian khusus dilaburkan kepada pembudayaan Norma dan membedah percambahan asas rasa hormat bagi menghasilkan daya penarik magnetik psikologi persahabatan kelompok yang kuat dan intim (kejelikitan kumpulan)." }
             ],
             "transisi": [
-                { "soalan": "Apakah karakteristik utama dalam perkembangan tahap transisi?", "jawapan": "Tahap ini didominasi oleh cabaran terhadap sistem kelompok seperti kemunculan konflik kuasa, peningkatan sifat defensif, kemarahan terhadap ketua, dan kecenderungan mengawal dominasi." },
-                { "soalan": "Kenapakah tahap transisi ini juga digelar fasa 'Storming'?", "jawapan": "Perkataan 'storming' mewakili pergolakan emosi dan ketegangan komunikasi apabila ahli mula menguji tahap keselamatan psikologi untuk melakukan penzahiran emosi mendalam." },
-                { "soalan": "Apakah yang menjadi tunjang ketakutan (anxiety) utama ahli pada fasa transisi?", "jawapan": "Ahli sentiasa diancam rasa takut akan kecaman ahli lain jika mereka nampak bodoh. Mereka khuatir status perkongsian mereka tidak diterima dan mereka dipinggirkan." },
-                { "soalan": "Apakah maksud dan peranan tingkah laku defensif?", "jawapan": "Tingkah laku defensif adalah benteng pertahanan psikologi yang ditonjolkan bagi melindungi diri daripada kecederaan emosi dan lari daripada keintiman pendedahan penderitaan." },
-                { "soalan": "Bagaimanakah kaunselor boleh meredakan tahap pertahanan (defensiveness) ahli?", "jawapan": "Kaunselor wajar memberikan validasi perasaan yang mengesahkan emosi mereka rasional, menggunakan nada pemahaman berempati, serta mengurangkan konfrontasi bagi mengelakkan tekanan." },
-                { "soalan": "Apakah yang dimaksudkan dengan istilah Penolakan (Resistance)?", "jawapan": "Penolakan bermaksud ahli secara automatik menghalang penerokaan emosi ke zon sensitif dengan cara melarikan topik, menukar kisah lain, dan berdiam diri." },
-                { "soalan": "Bagaimanakah Penafian (Denial) dikategorikan dalam proses ini?", "jawapan": "Ia berlaku apabila ahli memanipulasi mindanya dengan menolak fakta sebenar bahawa dia sedang bergelut dengan masalah, lantas menyatakan bahawa segalanya terkawal tanpa cela." },
-                { "soalan": "Mengapakah masalah pengawalan (control) dan kuasa mendominasi tercetus?", "jawapan": "Keinginan mengawal wujud sebagai manifestasi perlindungan apabila persaingan sesama ahli untuk mendapatkan sokongan dan kelulusan (approval) di dalam kumpulan memuncak." },
-                { "soalan": "Adakah konflik dianggap elemen perosak pada peringkat transisi kelompok?", "jawapan": "Tidak. Konflik tidak patut disekat; ia sepatutnya digunakan sebagai alat pembelajaran yang mapan untuk melatih ahli memproses isu pertelingkahan melalui komunikasi matang." },
-                { "soalan": "Apakah panduan konfrantasi yang sihat di antara sesama ahli?", "jawapan": "Konfrantasi yang membina harus dikemukakan tanpa sentimen melabel individu. Ia perlu berfokus secara objektif pada tingkah laku yang nyata dengan nada peduli (respectful)." },
-                { "soalan": "Mengapakah kredibiliti kepimpinan kaunselor sering dicabar pada fasa ini?", "jawapan": "Klien mungkin memindahkan kemarahan lalu mereka atau cuba menundukkan figura autoriti sebagai kaedah untuk meraih pengiktirafan dan autonomi kawalan kelompok." },
-                { "soalan": "Terangkan mekanisme Transference (Pemindahan) oleh ahli terhadap kaunselor.", "jawapan": "Transference ialah tindakan bawah sedar klien yang mengunjurkan corak perhubungan dan perasaan lampau (misalnya konflik bersama ayah) ke atas hubungan mereka bersama kaunselor." },
-                { "soalan": "Apakah yang dimaksudkan dengan Countertransference secara klinikal?", "jawapan": "Countertransference ialah reaksi emosi peribadi fasilitator kepada tindakan klien, yang mengakibatkan kemarahan atau perlindungan melampau akibat pengalaman silam kaunselor sendiri." },
-                { "soalan": "Sebutkan dua impak kemudaratan Countertransference kepada kualiti sesi terapi.", "jawapan": "Kaunselor akan memandu sesi dengan pandangan emosi peribadi yang hilang tahap objektivitinya, manakala klien akan gagal memperoleh celik akal ke arah rawatan klinikal yang sebenar." },
-                { "soalan": "Apakah cara paling wajar untuk fasilitator mengatasi serangan balas emosinya (countertransference)?", "jawapan": "Kaunselor perlu meningkatkan kesedaran kendiri serta segera mendidik masalah tersebut bersama rakan penyelia klinikal (supervision) atau memulakan sesi terapi buat diri sendiri." }
+                { "soalan": "Apakah karakteristik utama fasa kecamuk (Storming) dalam perkembangan tahap transisi interaksi kumpulan?", "jawapan": "Zaman ini dipalu percubaan keras menduga kekuatan sistem, ledakan ketidakselesaan kawalan mendominasi, pengukuhan sistem benteng rintangan (defensive) emosi, bergolaknya cabaran menderhaka kekuasaan struktur pemimpin, serta pertarungan persaingan." },
+                { "soalan": "Kenapakah era mencabar (Transisi) ini digelarkan pakar sebagai fasa 'Storming' (Taufan Pergolakan)?", "jawapan": "Terminologi taufan mengisyaratkan huru-hara sengketa pertembungan ledakan sentimen. Pesakit menabrak batas perlindungan psikologi bagi menilai betapa mantapnya pilar rahsia itu terjamin sebelum membenarkan roh penderitaannya meresap dibedah penuh." },
+                { "soalan": "Apakah tunjang induk yang meracuni Ketakutan (Anxiety) psikologi segenap klien semasa ribut zaman transisi?", "jawapan": "Klien ditikam kebimbangan trauma bayangan aib. Pesakit meragui jaminan belas kasihan kawan rakan lalu menggeletar diherdik hina sekiranya dia bertindak melucutkan baju rahsia emosi gelapnya dengan terbuka." },
+                { "soalan": "Apakah kefahaman laras saintifik berkaitan Tingkah Laku Defensif oleh pesakit minda bertekanan rawatan?", "jawapan": "Defensif adalah benteng keselamatan tebal bawah sedar yang digali pesakit buat menakis rempuhan konfrontasi klinikal agar mengelak kelemahan dan kepedihan jiwanya dikoyak tayang oleh tatapan saksi pemerhati." },
+                { "soalan": "Bagaimanakah corak intervensi fasilitator boleh menjinakkan pertahanan (defensiveness) rintangan degil klien?", "jawapan": "Fasilitator memadam laju asakan hentaman; ia menabur penawar empati (validasi kesusahan perasaan) yang mewajarkan ketakutan pesakit lantas mengurangkan konfrontasi bagi mengendurkan renjatan tekanan pelarian sang pendita rawatan." },
+                { "soalan": "Apakah definisi 'Penolakan' (Resistance) sebagai jurus penafian sedar pesakit ke arah penyembuhan kelompok?", "jawapan": "Tindakan halangan aktif pesakit menyekat asimilasi siasatan di tapak zon sensitif menerusi percubaan licik merubah haluan topik mendadak, sabotaj jadual hadir lewat, memonopoli celoteh kosong atau terus membatu kaku seribu bahasa." },
+                { "soalan": "Bagaimanakah mekanisma 'Penafian' (Denial) dikategorikan jauh lebih kronik dalam hirarki proses fasa ini?", "jawapan": "Ia kelompangan fungsi kognitif total di mana pelakunya meresap ilusi palsu (menolak bulat realiti sakitnya). Klien secara membuta menafikan seratus peratus kecacatan masalah bertegas tiada wujud sedikitpun celanya untuk dibincangkan pakar." },
+                { "soalan": "Mengapakah masalah perebutan Pengawalan (Control) serta asakan mendominasi arena kelompok selalu mencanak naik di saat ini?", "jawapan": "Kelakuan kawalan digembleng selaku topeng perisai persaingan status di celah himpunan pesakit yang bergelut memenangi perhatian serta monopoli restu (approval) pengaruh autoriti daripada bahu kepimpinan pakar kaunselor tersebut." },
+                { "soalan": "Adakah gelora Konflik sengit dianggap anasir barah perosak keutuhan peringkat awal jemaah transisi pesakit kelompok?", "jawapan": "Sama sekali tidak. Badai sengketa patut diterjemahkan positif (takkan dibungkam mati); sebaliknya digenggam umpama makmal alat pedagogi mematangkan otot komunikasi penderita menghakis resolusi pertelingkahan secara empati harmoni." },
+                { "soalan": "Apakah panduan merangka struktur teguran Konfrontasi telus sihat demi mengelak peperangan ahli di medan pertempuran rawatan?", "jawapan": "Senjata konfrontasi harus digarap berpaksi fokus tingkah laku klinikal zahir tanpa amuk melabel cemuhan tubuh pelaku peribadi, sebaliknya membaluti niat menegur berasaskan nada kerisauan saksama dan prihatin peduli (respectful care)." },
+                { "soalan": "Mengapakah kredibiliti tonggak pemimpin kepakaran sering digoyang ahli berani di kala fasa kritikal ribut menekan?", "jawapan": "Klien mengeksploitasi sasaran ketua fasilitator untuk memproyeksikan tumpahan trauma luka kebencian pada ketua otoriti hidup lalunya dan cubaan menderhaka hierarki agar merangkul trofi autonomi pengawasan kuasa di pentas medan awam kelompok itu." },
+                { "soalan": "Terangkan hukum dinamika putaran 'Transference' (Pemindahan Emosi Lampau) oleh pesakit terhadap batang tubuh fasilitator bertugas.", "jawapan": "Ia kelakuan buta bawah sedar pesakit yang menyarungkan cermin kaitan memori sentimen kasih atau benci asalnya (seperti konflik cengkaman bapa autokratik) lalu menghukum susuk fasilitator selaku mangsa proyektor jelmaan watak parut lalunya." },
+                { "soalan": "Apakah konsep pemindahan 'Countertransference' (Serangan Pantul) dari sudut kacamata tindak balas klinikal ketua pula?", "jawapan": "Ia kerosakan amalan objektiviti di mana emosi sisa peribadi fasilitator tercetus marah (atau membenteng simpati terlebih ekstrem) akibat panahan provokasi tingkah laku atau isu hidup klien yang mencederakan rahsia bayangan silam jiwa fasilitator itu sendiri." },
+                { "soalan": "Sebutkan dua hentaman kemudaratan Countertransference yang memusnahkan standard jaminan pemulihan rawatan kualiti sesi psikoterapi.", "jawapan": "Fasilitator bertukar melucutkan jubah kearifan bebas prejudisnya lantas merosakkan imbangan terapi adil. Kesannya pelayan pesakit akan kandas di celah monopoli hukuman subjektif yang merencat pencernaan celik akal pengajaran intervensinya mutlak." },
+                { "soalan": "Apakah metodologi rawatan pantas yang patut diraih fasilitator bergejala serangan balas emosinya (Countertransference burn-out) itu?", "jawapan": "Ketua dihukum mempamer sedar diri (Self-awareness) menyelongkar barah tindakannya. Jika darurat, kaunselor wajib menjerit pembedahan aduan merujuk krisis pantulannya itu bersandar teguran Pakar Penyelia Klinikal (supervision) mahupun menyantuni kerusi rawatannya sendiri." },
+                { "soalan": "Apakah corak perlakuan 'Intellectualization' yang menjadi kubu taktik helah bela diri (defense mechanism) di zaman transisi kelam ini?", "jawapan": "Klien menepis keperitan dengan berucap laras analisis abstrak saintifik kaku dan menelan logik rasional kognitif beku demi membonsaikan curahan kehangatan eksplorasi penderitaan emosi kalbunya berterus terang kepada rakan." },
+                { "soalan": "Bagaimanakah taktik pakar mengeksploitasi Pacing (Melaraskan Langkah Penderita) tatkala amuk klien memuncak penolakan keras bersuara?", "jawapan": "Kaunselor mengendurkan desakan brek konfrontasinya pantas, meredakan ketebalan topik menyengat ke sisi yang lebih harmoni dan membimbing penelusuran kembali menurut aras toleransi keselesaan nafas jiwa mangsa perlahan-lahan." },
+                { "soalan": "Mengapakah ada segelintir ahli menterjemahkan halangan pelarian mereka di fasa pertengahan ini menerusi kerancakan tabiat suka berleter tegur (Memberi Nasihat)?", "jawapan": "Pemberian syarahan telunjuk perubatan ke atas rakan penderita lain diangkat sekadar umpan silap mata manipulasi klien tersebut untuk mengelak tumpuan fokus pisau pembedahan kaunselor mengelar barah penderitaan kerentanan rohnya." },
+                { "soalan": "Apakah bentuk taktik lakonan 'Storytelling' (Menjaja Hikayat Meleret) yang mengancam penumpuan inti patinya rawatan transisi ini berpanjangan?", "jawapan": "Pesakit menari dalam huraian detail kronologi lewah tentang perihal gerak-geri pihak ketiga, mematikan pemusatan pengajian emosinya di alam terkini sesi rawatan sehingga keintiman luahan dirinya dipadam lesap dari bilik itu." },
+                { "soalan": "Apakah risiko fatal jikalau pertembungan konflik (Storming) disekat awal oleh kaunselor penakut konfrontasi dan diabaikan melarat mereput lama?", "jawapan": "Kehangatan api sengketa tersembunyi akan meledakkan ketidakstabilan pasif agresif berpanjangan. Ahli bertopeng pertahanan kebal menebal lalu menyebarkan rasa syak wasangka yang memporak-perandakan ikatan kejelikitan pemulihan fasa berikutnya." },
+                { "soalan": "Bagaimanakah amalan 'Refleksi Percanggahan' (Discrepancy) diacu selaku penawar membongkar rintangan penafian ahli berbohong status rawatan okey?", "jawapan": "Kaunselor bertutur mencungkil rasional paradoks mangsa secara lembut: 'Awak mewartakan kemelut semuanya harmoni terkawal mantap, tetapi bibir awak tanpa jeda memutarkan frasa ratapan beban kepenatan melampau setiap pertemuan kita.'." },
+                { "soalan": "Apakah matlamat pengajaran tersurat perlakuan konfrontasi yang dihidu ketua dari kaca mata pelbagai budaya komposit minoriti?", "jawapan": "Ketua dihalang bertindak melulu biadap. Beliau menyingkap adab norma budaya sesetengah susuk etnik yang melabel kaedah konfrontasi bertentang lurus sebagai pelanggaran tradisi yang tabu maka adaptasinya dianjurkan meresap secara bertahap berseni." },
+                { "soalan": "Apakah tanda Transference terhebat (Reaksi Melampau) dikesan dilancarkan oleh psikiatri ke arah ketua?", "jawapan": "Ia letusan luar realiti di mana ahli melantunkan sentimen marah berapi tanpa asas, menyanjung taksub semberono ibarat tuhan atau menyerahkan mutlak pergantungan takhta emosinya merengek bak bapa belaian kepada figura fasilitator." },
+                { "soalan": "Bagaimanakah cara kaunselor menepis terjahan cabaran serong klien menderhaka memfitnah kredibilitinya di hadapan lautan ahli am penonton?", "jawapan": "Pakar ditegah keras melenting defensif. Pemimpin unggul menelusuri ketegangan krisis menderhaka dengan mengiktiraf tuduhan telus itu secara perbincangan jemaah. Ini memugar pelantar amali (modeling) untuk menyuluh watak kritikal menghadapi asakan berani." },
+                { "soalan": "Apakah perbezaan dasar di pertengahan rawatan membendung taktik helah Penolakan ketara bertembung sifat Penafian minda buta?", "jawapan": "Taktik lari menolak (Resistance) menyaksikan penderita menyedari sakitnya tapi tidak betah membongkar derita. Buta menafi (Denial) meracun sistem kognitif menterjemahkan ilusi sihat seratus peratus sehingga gagal menangkap wujud simptom bahaya keretakannya." },
+                { "soalan": "Mengapakah ada kelompok pelatih kaunselor baharu dinasihati peka menjauhi tabiat taktik pujuk pampasan (Band-aiding) ketika ahli didera badai trauma menangis?", "jawapan": "Sapuan penawar magis segera memalsukan keperitan luka terpendam ahli. Ia merompak peluang mangsa memproses akar kecamuk lara penderitaannya (catharsis) bagi menggalas solusi asuhan rawatan tuntas yang bermakna buat tempoh hayatnya." },
+                { "soalan": "Apakah formula penyelesaian rintangan pasif kaku pendiam seribu bahasa (diam membatu) daripada sesetengah pelarian ahli pesakit ribut transisi?", "jawapan": "Ketua membaluti senyap tegang dengan konfrontasi peluahan belas ihsan: 'Saya sentiasa mengecam kebisuan ketat awak apabila lorong isu gelap ini dirempuh wacana; boleh tak kita susur asbab kesukaran merantai bibir awak menyepi sebegitu?'." },
+                { "soalan": "Sebutkan petunjuk dominan yang memadam isyarat krisis kepungan sikap kebal ahli (low defensiveness) di pintu gerbang penghujung ribut Storming.", "jawapan": "Ufuk penamat taufan disinari panji ketelusan tulen menyala. Penderita bersedia menerjang gerun mendedahkan ancaman peribadinya, mengakar utuh kepada waktu saat ini (here and now), serta melepaskan beban luahan rahsia empati perhubungan mesra tanpa tabir paksaan." },
+                { "soalan": "Bagaimanakah rintangan monopoli soal-siasat berderet (Questioning / Interrogation) digembleng ahli bagi mensabotaj paksi teras kelompok?", "jawapan": "Penembak bertubi-tubi peluru soal-jawab ke batang tubuh individu memandulkan curahan penceritaan mangsa menjadi sekadar mahkamah rekrut jawapan faktual kaku, sekali gus mengusir fokus menyelami rona pendedahan ekspresi kelemahan sentimen perasaan (affect)." },
+                { "soalan": "Adakah manifestasi pantulan Transference membawa petaka racun kelompok yang wajib diperangi dibuang total sehingga terpadam?", "jawapan": "Bukan racun malapetaka seutuhnya. Sebaliknya, sekiranya diuli fasilitator sebagai pemudah cara yang celik pandang berobjektif, ia instrumen suluh kuasa magis luar biasa yang dapat mentafsir peta bongkar selirat konflik hubungan asal usul pendita klien dengan pihak masa lalunya." }
             ]
         };
 
-        // Tajuk Dikemaskini
         const topicTitles = {
             "pengenalan": "1. Pengenalan Kelompok",
             "kepimpinan": "2. Kepimpinan",
@@ -345,16 +474,22 @@
         let currentTopic = "";
         let currentData = [];
         let fcIndex = 0;
+        
+        // Exam Variables
+        let examQuestions = [];
+        let currentQIndex = 0;
         let score = 0;
         let isAnswered = false;
+        let totalExamQ = 0;
 
         // ================= UTILITIES =================
         function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
+                [arr[i], arr[j]] = [arr[j], arr[i]];
             }
-            return array;
+            return arr;
         }
 
         function getAllWrongAnswers(correctAnswer) {
@@ -373,6 +508,7 @@
         function showHome() {
             document.getElementById('study-screen').classList.remove('active');
             document.getElementById('home-screen').classList.add('active');
+            resetExamSetup(); // Clear exam state
         }
 
         function selectTopic(topicKey) {
@@ -380,16 +516,12 @@
             currentData = db[topicKey];
             document.getElementById('display-topic-title').innerText = topicTitles[topicKey];
             
-            // Reset state
             fcIndex = 0;
-            score = 0;
-            document.getElementById('score').innerText = score;
+            resetExamSetup();
             
-            // Show Study Screen
             document.getElementById('home-screen').classList.remove('active');
             document.getElementById('study-screen').classList.add('active');
             
-            // Default to summary tab
             switchMode('summary');
         }
 
@@ -408,7 +540,7 @@
 
             if (mode === 'summary') { loadSummary(); }
             if (mode === 'flashcard') { loadFlashcard(fcIndex); }
-            if (mode === 'exam') { loadExamQuestion(); }
+            if (mode === 'exam') { resetExamSetup(); } // Always show setup when clicking Exam tab
         }
 
         // ================= SUMMARY LOGIC =================
@@ -443,33 +575,54 @@
         function prevCard() { fcIndex = (fcIndex - 1 + currentData.length) % currentData.length; loadFlashcard(fcIndex); }
 
         // ================= EXAM LOGIC =================
+        function resetExamSetup() {
+            document.getElementById('exam-setup').style.display = 'block';
+            document.getElementById('exam-active').style.display = 'none';
+            document.getElementById('exam-result').style.display = 'none';
+            score = 0;
+            currentQIndex = 0;
+        }
+
+        function startExam(numQuestions) {
+            totalExamQ = numQuestions;
+            score = 0;
+            currentQIndex = 0;
+            
+            // Randomize and slice the requested number of questions
+            let shuffledData = shuffleArray(currentData);
+            examQuestions = shuffledData.slice(0, totalExamQ);
+            
+            document.getElementById('exam-setup').style.display = 'none';
+            document.getElementById('exam-active').style.display = 'block';
+            document.getElementById('score').innerText = score;
+            
+            loadExamQuestion();
+        }
+
         function loadExamQuestion() {
-            if (currentData.length === 0) return;
+            if (currentQIndex >= totalExamQ) {
+                showExamResults();
+                return;
+            }
+
             isAnswered = false;
             document.getElementById('exam-feedback').innerText = "";
             document.getElementById('exam-next-btn').style.display = "none";
+            document.getElementById('exam-counter').innerText = `${currentQIndex + 1}/${totalExamQ}`;
             
-            // 1. Pilih soalan rawak dari topik ini sahaja
-            let qIndex = Math.floor(Math.random() * currentData.length);
-            let currentQ = currentData[qIndex];
-            
+            let currentQ = examQuestions[currentQIndex];
             document.getElementById('exam-question').innerText = currentQ.soalan;
 
-            // 2. Ambil jawapan betul
             let correctAns = currentQ.jawapan;
-
-            // 3. Ambil 2 jawapan salah dari KESELURUHAN silibus
             let wrongAnswersPool = getAllWrongAnswers(correctAns);
             
-            // 4. Susun 3 pilihan jawapan secara rawak
             let options = [
                 {text: correctAns, isCorrect: true},
                 {text: wrongAnswersPool[0], isCorrect: false},
                 {text: wrongAnswersPool[1], isCorrect: false}
             ];
-            shuffleArray(options);
+            options = shuffleArray(options);
 
-            // 5. Render butang pilihan
             const optionsContainer = document.getElementById('exam-options');
             optionsContainer.innerHTML = "";
             
@@ -505,7 +658,28 @@
                 document.getElementById('exam-feedback').style.color = "#d63031";
             }
             
+            currentQIndex++;
+            
+            let nextBtn = document.getElementById('btn-next-question');
+            if (currentQIndex >= totalExamQ) {
+                nextBtn.innerText = "Lihat Keputusan 🏆";
+            } else {
+                nextBtn.innerHTML = "Soalan Seterusnya &#8594;";
+            }
             document.getElementById('exam-next-btn').style.display = "flex";
+        }
+        
+        function showExamResults() {
+            document.getElementById('exam-active').style.display = 'none';
+            document.getElementById('exam-result').style.display = 'block';
+            document.getElementById('final-score-display').innerText = `${score}/${totalExamQ}`;
+            
+            let msg = document.getElementById('final-score-msg');
+            let percentage = (score / totalExamQ) * 100;
+            
+            if (percentage >= 80) msg.innerText = "Tahniah, pencapaian yang cemerlang! 🌟";
+            else if (percentage >= 50) msg.innerText = "Pencapaian yang baik, teruskan ulang kaji! 👍";
+            else msg.innerText = "Jangan putus asa, cuba lagi! 💪";
         }
     </script>
 </body>
