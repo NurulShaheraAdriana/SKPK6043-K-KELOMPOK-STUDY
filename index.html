@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKPK6043: Kaunseling Kelompok</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #7f8c8d; margin-bottom: 30px; }
+
+        /* --- SCREEN MANAGEMENT --- */
+        .screen { display: none; width: 100%; max-width: 800px; animation: fadeIn 0.4s ease-in; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- HOME SCREEN (TOPIC SELECTION) --- */
+        .topic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .topic-card {
+            background-color: white; border-radius: 12px; padding: 25px 20px;
+            text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            cursor: pointer; transition: all 0.3s; border-top: 5px solid #0984e3;
+        }
+        .topic-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .topic-card h3 { color: #2d3436; margin: 0 0 10px 0; }
+        .topic-card p { color: #636e72; font-size: 0.9em; margin: 0; }
+        
+        .t1 { border-color: #0984e3; } .t2 { border-color: #d63031; } .t3 { border-color: #6c5ce7; }
+        .t4 { border-color: #00b894; } .t5 { border-color: #fdcb6e; } .t6 { border-color: #e17055; }
+
+        /* --- STUDY SCREEN --- */
+        .top-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #dfe6e9;
+        }
+        .back-btn {
+            background-color: #b2bec3; color: white; border: none; padding: 10px 15px;
+            border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        .back-btn:hover { background-color: #636e72; }
+        .current-topic-title { font-size: 1.5em; font-weight: bold; color: #0984e3; margin: 0; text-align: right; }
+
+        /* Menu Tabs */
+        .tab-container {
+            display: flex; gap: 10px; margin-bottom: 25px;
+            background-color: #dfe6e9; padding: 5px; border-radius: 8px; justify-content: center;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            background-color: transparent; color: #555; border: none; padding: 10px 20px;
+            font-size: 1em; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.3s;
+        }
+        .tab-btn.active { background-color: #0984e3; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        /* Study Sections */
+        .study-section { display: none; }
+        .study-section.active { display: block; animation: fadeIn 0.3s ease-in; }
+
+        /* --- FLASHCARD STYLES --- */
+        .flashcard-container { perspective: 1000px; width: 100%; max-width: 650px; margin: 0 auto; }
+        .flashcard {
+            background-color: white; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            padding: 40px 30px; text-align: center; min-height: 250px; display: flex;
+            flex-direction: column; justify-content: center; cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d;
+        }
+        .flashcard.flipped { transform: rotateY(180deg); }
+        .flashcard .front, .flashcard .back { backface-visibility: hidden; width: 100%; }
+        .flashcard .back {
+            transform: rotateY(180deg); position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            padding: 30px; display: flex; flex-direction: column; justify-content: center; overflow-y: auto;
+        }
+        .tag {
+            background-color: #74b9ff; color: #2d3436; padding: 6px 15px; border-radius: 20px;
+            font-size: 0.85em; font-weight: bold; display: inline-block; margin-bottom: 20px;
+        }
+        .question-text { font-size: 1.3em; font-weight: 600; color: #2d3436; line-height: 1.4; }
+        .answer-text { font-size: 1.15em; color: #00b894; font-weight: 500; line-height: 1.5; }
+
+        /* --- EXAM STYLES --- */
+        .exam-card {
+            background-color: white; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            padding: 30px; text-align: center; max-width: 650px; margin: 0 auto;
+        }
+        .options-container { display: flex; flex-direction: column; gap: 12px; margin-top: 25px; }
+        .option-btn {
+            background-color: #f8f9fa; border: 2px solid #e9ecef; padding: 15px; border-radius: 8px;
+            font-size: 1em; line-height: 1.4; cursor: pointer; transition: all 0.2s; text-align: left;
+            font-family: inherit; color: #2d3436;
+        }
+        .option-btn:hover:not(:disabled) { border-color: #0984e3; background-color: #f1f8ff; transform: translateX(5px); }
+        .option-btn.correct { background-color: #e8f8f5 !important; border-color: #20c997 !important; color: #0c523e !important; font-weight: bold; }
+        .option-btn.wrong { background-color: #fff5f5 !important; border-color: #fa5252 !important; color: #8b0000 !important; }
+        .option-btn:disabled { cursor: not-allowed; opacity: 0.8; }
+        .feedback { margin-top: 20px; font-weight: bold; font-size: 1.1em; min-height: 30px; }
+        .score-display { margin-top: 20px; font-weight: bold; color: #2d3436; background: #dfe6e9; padding: 10px 20px; border-radius: 8px; display: inline-block; }
+
+        /* --- SUMMARY STYLES --- */
+        .summary-container {
+            display: flex; flex-direction: column; gap: 15px; max-width: 700px; margin: 0 auto;
+        }
+        .summary-item {
+            background-color: white; border-radius: 8px; padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #0984e3; text-align: left;
+        }
+        .summary-q { font-weight: bold; color: #2d3436; font-size: 1.1em; margin-bottom: 10px; line-height: 1.4; }
+        .summary-a { color: #00b894; font-weight: 500; line-height: 1.5; font-size: 1em; }
+
+        /* --- CONTROLS --- */
+        .controls { margin-top: 25px; display: flex; justify-content: center; gap: 15px; }
+        button.action-btn {
+            background-color: #0984e3; color: white; border: none; padding: 12px 25px; border-radius: 6px;
+            font-size: 1em; cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        button.action-btn:hover { background-color: #074b83; transform: translateY(-2px); }
+        button.secondary { background-color: #636e72; }
+        button.secondary:hover { background-color: #2d3436; }
+    </style>
+</head>
+<body>
+
+    <h1>Ulang Kaji SKPK6043</h1>
+    <div class="subtitle">Aplikasi Mudah Alih Kaunseling Kelompok</div>
+
+    <div id="home-screen" class="screen active">
+        <h2 style="text-align: center; color: #2d3436;">Pilih Topik Silibus:</h2>
+        <div class="topic-grid">
+            <div class="topic-card t1" onclick="selectTopic('pengenalan')">
+                <h3>1. Pengenalan Kelompok</h3>
+                <p>Konsep asas, perbandingan & tujuan.</p>
+            </div>
+            <div class="topic-card t2" onclick="selectTopic('kepimpinan')">
+                <h3>2. Kepimpinan</h3>
+                <p>Kemahiran ketua, co-leadership & peranan.</p>
+            </div>
+            <div class="topic-card t3" onclick="selectTopic('etika')">
+                <h3>3. Isu Etika</h3>
+                <p>Kerahsiaan, hak ahli & isu pelbagai budaya.</p>
+            </div>
+            <div class="topic-card t4" onclick="selectTopic('pembentukan')">
+                <h3>4. Pembentukan Kelompok</h3>
+                <p>Penapisan, persetujuan termaklum & perancangan.</p>
+            </div>
+            <div class="topic-card t5" onclick="selectTopic('awal')">
+                <h3>5. Tahap Awal</h3>
+                <p>Orientasi, membina kepercayaan & norma.</p>
+            </div>
+            <div class="topic-card t6" onclick="selectTopic('transisi')">
+                <h3>6. Tahap Transisi</h3>
+                <p>Konflik, penentangan & kebimbangan ahli.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="study-screen" class="screen">
+        
+        <div class="top-nav">
+            <button class="back-btn" onclick="showHome()">&#8592; Kembali</button>
+            <h2 class="current-topic-title" id="display-topic-title">Nama Topik</h2>
+        </div>
+
+        <div class="tab-container">
+            <button class="tab-btn active" id="btn-summary" onclick="switchMode('summary')">Ringkasan Nota</button>
+            <button class="tab-btn" id="btn-flashcard" onclick="switchMode('flashcard')">Mod Flashcard</button>
+            <button class="tab-btn" id="btn-exam" onclick="switchMode('exam')">Mod Peperiksaan</button>
+        </div>
+
+        <div id="section-summary" class="study-section active">
+            <p style="text-align:center; color:#636e72; margin-bottom: 20px;">Senarai penuh soalan dan jawapan untuk topik ini.</p>
+            <div class="summary-container" id="summary-content">
+                </div>
+        </div>
+
+        <div id="section-flashcard" class="study-section">
+            <p style="text-align:center; color:#636e72;">Fikirkan jawapan sebelum menterbalikkan kad.</p>
+            <div class="flashcard-container">
+                <div class="flashcard" id="flashcard" onclick="flipCard()">
+                    <div class="front">
+                        <div class="tag">Soalan <span id="fc-counter"></span></div>
+                        <div class="question-text" id="fc-question">Soalan dipaparkan di sini...</div>
+                        <p style="color: #b2bec3; font-size: 0.9em; margin-top: 30px;">(Klik kad untuk jawapan)</p>
+                    </div>
+                    <div class="back">
+                        <div class="tag" style="background-color: #00b894; color: white;">Jawapan</div>
+                        <div class="answer-text" id="fc-answer">Penerangan akan dipaparkan di sini.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="action-btn secondary" onclick="prevCard()">&#8592; Sebelumnya</button>
+                <button class="action-btn" onclick="nextCard()">Seterusnya &#8594;</button>
+            </div>
+        </div>
+
+        <div id="section-exam" class="study-section">
+            <div class="exam-card">
+                <div class="tag" style="background-color: #e17055; color: white;">Ujian Pemahaman</div>
+                <div class="question-text" id="exam-question" style="margin-top: 10px;">Soalan ujian...</div>
+                <p style="color: #636e72; margin-top: 10px; font-size: 0.9em;">Pilih definisi / jawapan yang paling tepat:</p>
+                
+                <div class="options-container" id="exam-options"></div>
+                <div class="feedback" id="exam-feedback"></div>
+                
+                <div class="controls" style="display: none;" id="exam-next-btn">
+                    <button class="action-btn" onclick="loadExamQuestion()">Soalan Seterusnya &#8594;</button>
+                </div>
+                <div class="score-display">Skor Topik Ini: <span id="score" style="color: #0984e3; font-size: 1.2em;">0</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ================= DATABASE TOPIK =================
+        const db = {
+            "pengenalan": [
+                { "soalan": "Apakah definisi Kaunseling Kelompok?", "jawapan": "Kaunseling kelompok adalah satu bentuk intervensi yang membolehkan kaunselor bekerja dengan lebih daripada seorang klien. Ia sesuai untuk pelbagai peringkat umur dan perkembangan." },
+                { "soalan": "Nyatakan dua matlamat utama kaunseling kelompok.", "jawapan": "Dua matlamat utamanya adalah untuk tujuan penyembuhan (remedial) dan pencegahan masalah." },
+                { "soalan": "Apakah kerangka masa (time frame) yang difokuskan dalam kaunseling kelompok?", "jawapan": "Ia memberi penekanan kepada situasi masa kini, iaitu merangkumi pemikiran sedar, perasaan, dan tingkah laku ahli pada masa sekarang (here and now)." },
+                { "soalan": "Apakah peranan utama kaunselor di dalam sesuatu kelompok?", "jawapan": "Kaunselor berperanan sebagai fasilitator, pemudah cara proses interaksi, pemberi maklumat, dan pendorong untuk ahli melaksanakan pelan mereka." },
+                { "soalan": "Nyatakan kelebihan sesi kelompok yang menyerupai realiti sebenar.", "jawapan": "Kelompok bertindak sebagai mikrokosma masyarakat (a microcosm of society) berikutan wujudnya kepelbagaian latar belakang dalam kalangan ahlinya. Ini membantu ahli membina kemahiran interpersonal secara praktikal." },
+                { "soalan": "Bagaimanakah kaunseling kelompok memperkasa kemahiran sosial ahli?", "jawapan": "Kelompok mengajar ahli cara berkomunikasi yang sihat, memberi pujian, peka terhadap orang lain, dan menunjukkan rasa ambil berat." },
+                { "soalan": "Apakah manfaat kaunseling kelompok kepada golongan kanak-kanak?", "jawapan": "Ia digunakan sebagai alat remedi untuk mengawal tingkah laku bermasalah seperti sikap suka bergaduh, membuli, serta membantu mereka mengawal emosi dan kemahiran sosial." },
+                { "soalan": "Mengapakah kaunseling kelompok dianggap medium yang baik untuk remaja?", "jawapan": "Ia memberi remaja ruang selamat bagi meluahkan emosi, bereksperimen dengan realiti, serta mencari keyakinan diri dengan bantuan sokongan rakan sebaya." },
+                { "soalan": "Bagaimanakah penyertaan dalam kelompok membantu golongan warga emas?", "jawapan": "Ia dapat mengatasi masalah pengasingan sosial dan perasaan tidak dihargai yang sering dialami mereka. Ia juga membantu warga emas menetapkan makna baru dalam kehidupan dan meningkatkan integriti diri." },
+                { "soalan": "Sebutkan lima jenis kumpulan (kelompok) yang biasa dikendalikan dalam bidang ini.", "jawapan": "Jenis-jenis kelompok merangkumi kelompok psikoterapi, kelompok psikopendidikan, kelompok kerja (task facilitation), kelompok jangka pendek, dan kelompok kaunseling." },
+                { "soalan": "Apakah fokus matlamat bagi Kelompok Psikoterapi?", "jawapan": "Fokusnya adalah ke arah pemulihan, rawatan mendalam, dan pembentukan semula struktur personaliti ahli. Ia biasanya membabitkan individu yang mempunyai masalah emosi atau psikologikal yang berat." },
+                { "soalan": "Bagaimanakah Kelompok Psikopendidikan berfungsi?", "jawapan": "Kelompok ini dibina berasaskan tema yang khusus dengan memberikan fakta, maklumat, serta melatih ahli kemahiran daya tindak (coping) melalui pelbagai latihan." },
+                { "soalan": "Berikan dua contoh situasi di mana Kelompok Psikopendidikan digunakan.", "jawapan": "Antara contohnya ialah kelompok latihan pengurusan kemarahan dan kelompok sokongan untuk mangsa keganasan rumah tangga." },
+                { "soalan": "Apakah peranan Kelompok Kerja (Task Facilitation)?", "jawapan": "Ia ditubuhkan untuk membantu organisasi, komuniti, atau agensi menambah baik fungsi kerja mereka dengan memanfaatkan dinamika kelompok bagi mencapai sasaran tugas." },
+                { "soalan": "Apakah pendekatan utama yang diaplikasikan dalam Kelompok Jangka Pendek?", "jawapan": "Oleh kerana durasinya singkat, ia sangat bersandarkan pada pendekatan kognitif dan modifikasi tingkah laku yang berfokus ke arah penyelesaian tepat." }
+            ],
+            "kepimpinan": [
+                { "soalan": "Apakah matlamat kepimpinan kelompok dalam kaunseling?", "jawapan": "Kepimpinan kelompok bertujuan memudah cara interaksi, mewujudkan persekitaran selamat, merangsang penyertaan ahli secara penuh, serta memandu kelompok menuju sasaran." },
+                { "soalan": "Mengapakah ciri kepelbagaian gaya memimpin (versatility) ditekankan?", "jawapan": "Versatiliti membuktikan bahawa tiada corak satu gaya (one size fits all) yang berkesan untuk semua kelompok. Kaunselor mesti beradaptasi mengikut umur dan profil kumpulan." },
+                { "soalan": "Dalam situasi apakah gaya pimpinan 'Leader Directed' paling efisien?", "jawapan": "Gaya berpusatkan ketua ini paling bersesuaian untuk rawatan krisis kelompok perjumpaan jangka masa terhad (sekali), ahli penjara, pesakit hospital, atau masalah rehabilitasi spesifik." },
+                { "soalan": "Bezakan fokus bagi Kepimpinan Interpersonal dan Kepimpinan Intrapersonal.", "jawapan": "Interpersonal menekankan ikatan komunikasi penyelesaian tugas kelompok, manakala Intrapersonal menjurus secara eksklusif dalam penerokaan kelemahan kendiri, kebimbangan mental, dan luka peribadi." },
+                { "soalan": "Sebutkan ciri-ciri psikologi ketua atau kaunselor kelompok yang berkaliber.", "jawapan": "Mereka terdiri daripada personaliti terbuka, penyabar, sangat selesa mendampingi individu, objektif, kesihatan mental yang terjamin, dan tidak bersikap berat sebelah." },
+                { "soalan": "Apakah rasional keperluan kaunselor meluaskan spektrum pergaulan peribadinya?", "jawapan": "Aktiviti pergaulan mendedahkan kaunselor kepada beraneka demografi populasi masyarakat, lantas memupuk kapasiti mental ke arah keluwesan memandang kehidupan pelbagai warna realiti klien." },
+                { "soalan": "Mengapakah tahap kefahaman berbilang teori dan konflik perkembangan usia manusia amat penting?", "jawapan": "Landasan teori membantu kaunselor melihat dilema yang disuarakan ahli dari pelbagai lensa rujukan. Ia memudahkan penjelasan dilema tipikal mengikut peringkat usia individu tersebut." },
+                { "soalan": "Kenapakah 'Kepekaan Diri' (Self-Awareness) fasilitator menjadi nadi kejayaan etika praktis?", "jawapan": "Sifat sedar diri menahan kaunselor daripada penyakit mengenakan doktrin dan nilai peribadi sendiri secara paksa ke atas perjalanan hidup klien yang pelbagai latar budaya." },
+                { "soalan": "Huraikan cabaran ketakutan mental bagi graduan kaunselor yang masih baharu.", "jawapan": "Pemimpin pemula biasanya dirundung paranoia berhadapan ruangan sunyi memanjang (kesenyapan), ketidakupayaan menyuraikan amarah konflik, serta ketakutan berhadapan ahli manipulatif." },
+                { "soalan": "Sebutkan tiga jenis kemahiran utama memimpin interaksi sesebuah kumpulan.", "jawapan": "Ia merangkumi kemahiran membuat ulasan merumus (summarizing), membiaskan galakan penyertaan yang bersemangat, dan teknik pemecahan keserabutan (clarifying)." },
+                { "soalan": "Apakah nilai teras yang dituntut oleh kerangka kecekapan multibudaya (multicultural competence)?", "jawapan": "Kecekapan silang budaya menuntut pengiktirafan kepada rujukan adat, kebebasan daripada sentimen bias diskriminasi etnik, dan peningkatan intervensi klinikal yang meraikan kelainan klien." },
+                { "soalan": "Apakah fokus utama proses menghentikan (terminating) secara rasmi satu perjumpaan?", "jawapan": "Sesi patut diringkaskan bersama rangkuman kata sepakat, serlahan pandangan baru (insights), disusuli perancangan kesinambungan kehidupan luar klien berdasar ilmu terapi kelompok tersebut." },
+                { "soalan": "Apakah prinsip utama bagi 'kelayakan' seorang pemimpin kelompok berdasarkan etika?", "jawapan": "Sijil akademik tidak memadai tanpa disusuli pengalaman kemahiran khusus. Pemimpin dilarang sama sekali bereksperimen dengan rawatan psikoterapi yang bukan kemahiran teknikal mereka." },
+                { "soalan": "Apakah kesan kerosakan akibat pertindihan Hubungan Dual (Dual Relationship) di luar?", "jawapan": "Pertembungan ikatan selain klien-profesional boleh menghancurkan keadilan layanan kelompok, membenihkan unsur favouritisme, serta membongkar kerahsiaan peribadi rakan ke persekitaran yang mengancam." },
+                { "soalan": "Bagaimanakah corak penyelesaian etika untuk menangani ahli trauma hasil manipulasi lalu?", "jawapan": "Kaunselor wajar peka akan amaran reaksi klien dan memastikan penyediaan susulan sokongan terapi individu tersedia sepenuhnya buat kelangsungan emosi mereka yang tercedera." }
+            ],
+            "etika": [
+                { "soalan": "Apakah takrifan kewajipan Izin Termaklum (Informed Consent) dalam pendaftaran ahli kelompok?", "jawapan": "Ia merupakan protokol pemakluman komprehensif bagi menzahirkan semua risiko bahaya, pendedahan kelayakan ketua, bayaran, prosedur limitasi simpanan kerahsiaan sebelum mengikat persetujuan klien." },
+                { "soalan": "Apakah kriteria layanan bagi Ahli Rujukan Mandatori (involuntary members) yang diwajibkan oleh undang-undang?", "jawapan": "Biarpun paksaan dikenakan, kaunselor dituntut memperjelaskan padah keengganan berpartisipasi dan menerangkan kebaikan intervensi tanpa paksaan kepada asimilasi luahan kendiri ahli tersebut." },
+                { "soalan": "Huraikan langkah peredaan kaunselor terhadap sikap bermusuh Ahli Mandatori secara beretika.", "jawapan": "Langkah validasi perasaan adalah sangat kritikal; pantang sekali melabel mereka keras kepala atau menghukum secara konfrantasi terus tanpa membina akar keselamatan psikologikal." },
+                { "soalan": "Bagaimanakah kaunselor membenteras serangan bahasa berasaskan prejudis Stereotaip secara matang?", "jawapan": "Teguran profesional yang bertenang tetapi rasional hendaklah dikeluarkan serta-merta. Teguran tersebut dipusatkan kepada kritikan jenis kelakuan yang melukakan, bukan menghukum batang tubuh pelaku." },
+                { "soalan": "Berikan asas penggunaan laras bahasa memberdaya (empowering) bagi individu kumpulan Orang Kurang Upaya (OKU).", "jawapan": "Prinsip linguistik memerlukan penonjolan perkataan keupayaan berfokuskan individu mendahului label limitasi (cth: 'individu dengan autisme' dan bukannya 'budak kecacatan') bagi memelihara kehormatan mereka." },
+                { "soalan": "Adakah klien bebas angkat kaki keluar kelompok (dropping out) pada bila-bila masa mengikut kemahuan mereka?", "jawapan": "Mereka mempunyai hak asasi; walau bagaimanapun komitmen kehadiran harus digariskan secara tertib pada orientasi awal. Pemergian ahli diwajibkan menjalani pendedahan sebab keluar bagi meminimalkan kesan rentetan trauma kelompok." },
+                { "soalan": "Sebutkan dua contoh Risiko Psikologikal (psychological risks) yang paling ditakuti semasa pendedahan diri?", "jawapan": "Dinamika ini mendedahkan bahaya ahli dikambing-hitamkan (scapegoating) oleh manipulasi ahli lain, dan cetusan taufan emosi (hostility) yang gagal dikawal hingga membawa retakan persahabatan kelompok." },
+                { "soalan": "Nyatakan taktik defensif kaunselor demi membendung letupan Risiko Psikologikal kepada ahli rapuh.", "jawapan": "Mekanisme saringan latar belakang wajib diketatkan sebelum mendaftar keahlian. Intervensi kecemasan grounding relaksasi perlu tersedia dan penyeliaan dinamika wajib dipantau aktif oleh kaunselor." },
+                { "soalan": "Bolehkah kaunselor berikrar membekalkan perlindungan Kerahsiaan secara 100 peratus tanpa belah bahagi?", "jawapan": "Sama sekali ditegah memanipulasi kebenaran; wujud akta limitasi undang-undang mewajibkan laporan pengungkapan pecah amanah jikalau elemen mencederakan pesakit kanak-kanak mahupun niat jenayah diputuskan." },
+                { "soalan": "Sekiranya pendaftaran kelompok menempatkan pelajar berumur minor (bawah 18 tahun), apakah status kerahsiaannya?", "jawapan": "Statut Akta Kaunselor mewajibkan pemakluman asas program dibentangkan kepada waris keluarga penjaga tanpa menjaja spesifik kerosakan intimasi anak; fasilitator berperanan mengurus persefahaman sempadan etika tersebut secara cermat." },
+                { "soalan": "Sejauh manakah impak Keadilan Sosial (Social Justice) diketengahkan selaku payung kelompok ini?", "jawapan": "Ruangan sesi perlu diteguhkan dari dicabuli amalan penindasan majoriti, rasisme, kasta darjat, serta layanan berat sebelah supaya komuniti tertindas kembali membebaskan penderitaan dengan sokongan suara yang teguh." },
+                { "soalan": "Huraikan cabaran persilangan budaya (Diversity) jika norma ahli bercanggah total dengan doktrin nilai kaunselor.", "jawapan": "Kecacatan pemahaman terhadap gaya budaya klien akan menjerumuskan kaunselor kepada salah tafsiran dan penterjemahan menghukum kelakuan. Ini mendesak rujukan berterusan fasilitator ke atas rukun hormat pelbagai etnik peribadi (Respectful model)." },
+                { "soalan": "Apakah konsep pemenjaraan Nilai Kendiri Kaunselor (Ethical Bracketing)?", "jawapan": "Apabila pertembungan kepercayaan nilai memuncak, kaunselor diwajibkan secara profesional meletakkan nilai anutan peribadinya di tepi bilik dan bekerja mengemudi kejayaan resolusi berteraskan orientasi acuan kehidupan penderita klien semata-mata." },
+                { "soalan": "Apakah bahaya mengaplikasikan Teknik Kaunseling berbentuk radikal atau provokasi?", "jawapan": "Gaya membongkar kesedihan lampau (unfinished business) secara ekstrem boleh memercikkan trauma atau serangan panik secara mendadak sekiranya intervensi persediaan kemahiran menyerap kejutan diabaikan fasilitator." },
+                { "soalan": "Bagaimanakah fasilitator pakar memanifestasikan kualiti amalan Kompetensi Kecekapan Latihan mereka di peringkat kemuncak?", "jawapan": "Tahap profesional kaunselor ini digarap melalui pembudayaan penyerapan pendidikan secara holistik yang merangkumi pembedahan klinikal (supervision), menyertai penerokaan kumpulan eksplorasi, serta mendapatkan sesi terapinya sendiri." }
+            ],
+            "pembentukan": [
+                { "soalan": "Mengapakah proses pembentukan kelompok dianggap kritikal?", "jawapan": "Satu pembentukan kelompok yang terancang akan menentukan tahap keberkesanan intervensi, mengurangkan risiko keciciran ahli (dropout), serta membina dinamika kumpulan yang sihat." },
+                { "soalan": "Apakah langkah pertama dalam merancang sesuatu kelompok kaunseling?", "jawapan": "Kaunselor wajib menyediakan satu kertas cadangan (proposal) yang jelas dan mantap. Proposal ini bertindak sebagai alat komunikasi rasmi dengan pihak pentadbir dan panduan pelaksanaan." },
+                { "soalan": "Nyatakan empat komponen wajib yang perlu ada dalam sesebuah proposal kelompok.", "jawapan": "Komponen tersebut merangkumi Rasional program, Objektif (utama dan khusus), Aspek Praktikal (saiz, tempoh, tempat), serta Prosedur dan Penilaian." },
+                { "soalan": "Apakah kriteria pembinaan Objektif yang baik dalam proposal kelompok?", "jawapan": "Objektif mestilah spesifik, logik untuk diukur pencapaiannya, dan mampu dilaksanakan secara realistik dalam tempoh masa yang dirancang." },
+                { "soalan": "Apakah rintangan atau cabaran awal yang lazim wujud ketika menubuhkan kelompok?", "jawapan": "Cabaran selalunya datang daripada kekangan sistem, seperti halangan dasar (polisi), kekurangan peruntukan kewangan, serta kurangnya kesedaran mengenai manfaat kelompok oleh pihak pengurusan." },
+                { "soalan": "Bagaimanakah strategi bagi menghadapi kekangan polisi dan kewangan institusi?", "jawapan": "Kaunselor harus mempergiat kempen pendidikan psikologi (psychoeducation) dan membentangkan proposal terus kepada pihak pemegang taruh (advocacy) bagi meyakinkan mereka." },
+                { "soalan": "Senaraikan kaedah yang efektif untuk merekrut calon kelompok.", "jawapan": "Calon boleh direkrut melalui edaran poster, hebahan media sosial, rujukan agensi berkaitan, dan rujukan khusus secara terus oleh kaunselor atau rakan sekerja." },
+                { "soalan": "Apakah fungsi utama sesi Orientasi atau Pra-kelompok (Preliminary Session)?", "jawapan": "Sesi ini bertujuan untuk menyaring calon bersesuaian, membincangkan jangkaan kelompok, menerangkan peraturan keselamatan, serta membina asas kepercayaan." },
+                { "soalan": "Berikan contoh profil individu yang tidak sesuai menyertai sesi kaunseling kelompok.", "jawapan": "Individu dengan risiko membunuh diri, mengalami psikosis akut, terlalu mementingkan diri (highly self-centered), dan terlalu defensif adalah kurang sesuai dan memerlukan sesi individu." },
+                { "soalan": "Sekiranya ada calon ditolak, apakah langkah beretika yang wajib diambil oleh kaunselor?", "jawapan": "Kaunselor perlu berterus terang dan sensitif tentang sebab penolakan. Kaunselor kemudiannya wajar menawarkan khidmat kaunseling individu atau merujuk mereka kepada pihak profesional lain." },
+                { "soalan": "Apakah perbezaan struktur antara Kelompok Terbuka (Open Group) dan Kelompok Tertutup (Closed Group)?", "jawapan": "Kelompok terbuka membenarkan pertukaran serta penambahan ahli baharu secara berterusan. Sebaliknya, kelompok tertutup mengekalkan komposisi ahli yang sama tanpa ahli baharu sehingga program tamat." },
+                { "soalan": "Apakah impak komposisi Kelompok Homogen (Homogeneous) terhadap dinamika ahli?", "jawapan": "Disebabkan semua ahlinya berkongsi jenis masalah yang serupa (contohnya stres akademik), tahap kejelikitan (cohesion) mereka akan terbina dengan lebih pantas dan kukuh." },
+                { "soalan": "Berapakah purata saiz ideal untuk kelompok dewasa dan kanak-kanak?", "jawapan": "Untuk dewasa, saiz kelompok terbaik adalah sekitar lapan orang, manakala bagi kanak-kanak saiz yang disyorkan lebih kecil iaitu tiga hingga empat orang." },
+                { "soalan": "Apakah spesifikasi tempat perjumpaan kelompok yang dianggap kondusif?", "jawapan": "Bilik harus memberikan privasi yang ketat, terhindar daripada gangguan bunyi, dan kerusi harus disusun secara bulatan untuk memudahkan komunikasi mata bertentang mata." },
+                { "soalan": "Apakah perkara yang disentuh di bawah Peraturan Kelompok semasa sesi orientasi?", "jawapan": "Sesi ini menekankan etika memegang kerahsiaan, peraturan komunikasi (satu suara bercakap pada satu masa), komitmen kehadiran ahli, serta saling menghormati." }
+            ],
+            "awal": [
+                { "soalan": "Sebutkan dua karakteristik dominan ahli ketika proses awal kelompok bermula.", "jawapan": "Ahli umumnya mula menunjukkan kebimbangan tahap tinggi akibat jangkaan yang kabur, serta wujudnya sifat pendiam, kaku, pasif, dan sikap berhati-hati." },
+                { "soalan": "Mengapakah ada sebahagian ahli yang terus menunjukkan sikap penolakan awal?", "jawapan": "Penolakan terjadi kerana tahap kepercayaan yang masih sifar terhadap peserta lain. Kadangkala ia dipengaruhi amalan budaya yang melarang perbincangan hal peribadi kepada orang luar." },
+                { "soalan": "Apakah impak kerosakan jika 'agenda tersembunyi' (hidden agenda) tidak dikendalikan kaunselor?", "jawapan": "Kelompok akan dipenuhi sikap syak wasangka yang menebal, hilang sifat selamat, ahli menjadi defensif, serta komunikasi dipenuhi dengan sindiran atau bermusuhan." },
+                { "soalan": "Apakah yang dimaksudkan dengan konflik pada tahap awal?", "jawapan": "Konflik awal adalah letusan emosi akibat salah faham, sifat tidak suka, atau prasangka di kalangan ahli. Kaunselor perlu bertindak mendidik mereka mengatasi pertembungan tersebut secara sihat." },
+                { "soalan": "Semasa peringkat awal, bagaimanakah ahli memfokuskan penceritaan mereka?", "jawapan": "Banyak ahli cenderung menggunakan mekanisme mengelak dengan bercerita tentang isu orang lain, berbanding membuat penerokaan tentang isu yang menghantui diri mereka sendiri." },
+                { "soalan": "Bagaimanakah kaunselor tahu bahawa elemen kepercayaan sudah mula terbina?", "jawapan": "Kepercayaan dikesan apabila ahli tanpa paksaan meluahkan emosi dengan telus, sanggup berdepan risiko menunjukkan kelemahan diri, serta meletakkan matlamat penyelesaian." },
+                { "soalan": "Apakah tanda-tanda situasi tidak percaya sedang menguasai kelompok?", "jawapan": "Kumpulan dikawal oleh kesenyapan, perbualan terlalu umum secara intelektual tanpa penghayatan, perhubungan cetek (superficial), dan ahli hanya menunggu arahan kaunselor untuk bercakap." },
+                { "soalan": "Bagaimanakah kemahiran mendengar dengan model SOLER menyumbang kepada empati?", "jawapan": "Ia adalah bahasa tubuh yang memberikan tumpuan penuh dengan mata dan kedudukan badan. Ini memancarkan sikap tulen tanpa penilaian menghukum (non-judgmental) yang membina ruang pendedahan selamat." },
+                { "soalan": "Apakah akibat jika konfrantasi awal dilakukan secara melulu dan agresif oleh fasilitator?", "jawapan": "Konfrantasi yang agresif tanpa asas empati akan menyebabkan klien terus membina tembok defensif yang tebal, menghasilkan reaksi penolakan yang membantutkan keberkesanan sesi." },
+                { "soalan": "Sebutkan antara sikap kaunselor yang mematikan perkembangan positif ahli.", "jawapan": "Perhatian kaunselor mudah terganggu, pantas memberikan nasihat solusi, memonopoli perbualan, serta melayan kata-kata yang diucap secara zahir tanpa mengendahkan petunjuk bahasa tubuh." },
+                { "soalan": "Bagaimanakah penentuan Matlamat Personal patut direka?", "jawapan": "Matlamat personal yang kabur perlu dibimbing oleh kaunselor supaya lebih spesifik dan terperinci. Kontrak dan tugasan juga harus digunakan sebagai alat peneguhan untuk capai matlamat ini." },
+                { "soalan": "Apakah maksud 'Norma Kelompok'?", "jawapan": "Norma kelompok merujuk kepada sistem kepercayaan dan jangkaan piawaian tingkah laku yang diterima bersama oleh ahli demi menjamin interaksi dapat berlangsung dengan lancar." },
+                { "soalan": "Apakah amaran penting dalam kaedah pengajaran (teaching) ketika membina norma?", "jawapan": "Kaunselor dilarang memuntahkan segala peraturan sekaligus seperti mengajar kelas teori. Ia haruslah ditunjukkan secara bertahap (modeling) supaya tiada kebergantungan melampau." },
+                { "soalan": "Apakah manfaat latihan mencatat jurnal atau diari kepada perkembangan ahli?", "jawapan": "Jurnal merekod aliran pemikiran dan luahan emosi ahli terhadap pengalaman sesi. Latihan ini membina kemahiran penilaian kendiri dalam menilai setiap reaksi mereka terhadap satu-satu kejadian." },
+                { "soalan": "Bagaimanakah kadar penstrukturan (structuring) harus dikelola oleh kaunselor?", "jawapan": "Ia harus dikawal secara seimbang; jika terlalu terstruktur ahli akan cepat bosan dan pasif, namun jika terlalu bebas (liberal), mereka akan bingung dan mengalami tahap kebimbangan yang tinggi." }
+            ],
+            "transisi": [
+                { "soalan": "Apakah karakteristik utama dalam perkembangan tahap transisi?", "jawapan": "Tahap ini didominasi oleh cabaran terhadap sistem kelompok seperti kemunculan konflik kuasa, peningkatan sifat defensif, kemarahan terhadap ketua, dan kecenderungan mengawal dominasi." },
+                { "soalan": "Kenapakah tahap transisi ini juga digelar fasa 'Storming'?", "jawapan": "Perkataan 'storming' mewakili pergolakan emosi dan ketegangan komunikasi apabila ahli mula menguji tahap keselamatan psikologi untuk melakukan penzahiran emosi mendalam." },
+                { "soalan": "Apakah yang menjadi tunjang ketakutan (anxiety) utama ahli pada fasa transisi?", "jawapan": "Ahli sentiasa diancam rasa takut akan kecaman ahli lain jika mereka nampak bodoh. Mereka khuatir status perkongsian mereka tidak diterima dan mereka dipinggirkan." },
+                { "soalan": "Apakah maksud dan peranan tingkah laku defensif?", "jawapan": "Tingkah laku defensif adalah benteng pertahanan psikologi yang ditonjolkan bagi melindungi diri daripada kecederaan emosi dan lari daripada keintiman pendedahan penderitaan." },
+                { "soalan": "Bagaimanakah kaunselor boleh meredakan tahap pertahanan (defensiveness) ahli?", "jawapan": "Kaunselor wajar memberikan validasi perasaan yang mengesahkan emosi mereka rasional, menggunakan nada pemahaman berempati, serta mengurangkan konfrontasi bagi mengelakkan tekanan." },
+                { "soalan": "Apakah yang dimaksudkan dengan istilah Penolakan (Resistance)?", "jawapan": "Penolakan bermaksud ahli secara automatik menghalang penerokaan emosi ke zon sensitif dengan cara melarikan topik, menukar kisah lain, dan berdiam diri." },
+                { "soalan": "Bagaimanakah Penafian (Denial) dikategorikan dalam proses ini?", "jawapan": "Ia berlaku apabila ahli memanipulasi mindanya dengan menolak fakta sebenar bahawa dia sedang bergelut dengan masalah, lantas menyatakan bahawa segalanya terkawal tanpa cela." },
+                { "soalan": "Mengapakah masalah pengawalan (control) dan kuasa mendominasi tercetus?", "jawapan": "Keinginan mengawal wujud sebagai manifestasi perlindungan apabila persaingan sesama ahli untuk mendapatkan sokongan dan kelulusan (approval) di dalam kumpulan memuncak." },
+                { "soalan": "Adakah konflik dianggap elemen perosak pada peringkat transisi kelompok?", "jawapan": "Tidak. Konflik tidak patut disekat; ia sepatutnya digunakan sebagai alat pembelajaran yang mapan untuk melatih ahli memproses isu pertelingkahan melalui komunikasi matang." },
+                { "soalan": "Apakah panduan konfrantasi yang sihat di antara sesama ahli?", "jawapan": "Konfrantasi yang membina harus dikemukakan tanpa sentimen melabel individu. Ia perlu berfokus secara objektif pada tingkah laku yang nyata dengan nada peduli (respectful)." },
+                { "soalan": "Mengapakah kredibiliti kepimpinan kaunselor sering dicabar pada fasa ini?", "jawapan": "Klien mungkin memindahkan kemarahan lalu mereka atau cuba menundukkan figura autoriti sebagai kaedah untuk meraih pengiktirafan dan autonomi kawalan kelompok." },
+                { "soalan": "Terangkan mekanisme Transference (Pemindahan) oleh ahli terhadap kaunselor.", "jawapan": "Transference ialah tindakan bawah sedar klien yang mengunjurkan corak perhubungan dan perasaan lampau (misalnya konflik bersama ayah) ke atas hubungan mereka bersama kaunselor." },
+                { "soalan": "Apakah yang dimaksudkan dengan Countertransference secara klinikal?", "jawapan": "Countertransference ialah reaksi emosi peribadi fasilitator kepada tindakan klien, yang mengakibatkan kemarahan atau perlindungan melampau akibat pengalaman silam kaunselor sendiri." },
+                { "soalan": "Sebutkan dua impak kemudaratan Countertransference kepada kualiti sesi terapi.", "jawapan": "Kaunselor akan memandu sesi dengan pandangan emosi peribadi yang hilang tahap objektivitinya, manakala klien akan gagal memperoleh celik akal ke arah rawatan klinikal yang sebenar." },
+                { "soalan": "Apakah cara paling wajar untuk fasilitator mengatasi serangan balas emosinya (countertransference)?", "jawapan": "Kaunselor perlu meningkatkan kesedaran kendiri serta segera mendidik masalah tersebut bersama rakan penyelia klinikal (supervision) atau memulakan sesi terapi buat diri sendiri." }
+            ]
+        };
+
+        // Tajuk Dikemaskini
+        const topicTitles = {
+            "pengenalan": "1. Pengenalan Kelompok",
+            "kepimpinan": "2. Kepimpinan",
+            "etika": "3. Isu Etika",
+            "pembentukan": "4. Pembentukan Kelompok",
+            "awal": "5. Tahap Awal",
+            "transisi": "6. Tahap Transisi"
+        };
+
+        // ================= GLOBAL VARIABLES =================
+        let currentTopic = "";
+        let currentData = [];
+        let fcIndex = 0;
+        let score = 0;
+        let isAnswered = false;
+
+        // ================= UTILITIES =================
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function getAllWrongAnswers(correctAnswer) {
+            let allAnswers = [];
+            for (let key in db) {
+                db[key].forEach(item => {
+                    if (item.jawapan !== correctAnswer) {
+                        allAnswers.push(item.jawapan);
+                    }
+                });
+            }
+            return shuffleArray(allAnswers);
+        }
+
+        // ================= NAVIGATION =================
+        function showHome() {
+            document.getElementById('study-screen').classList.remove('active');
+            document.getElementById('home-screen').classList.add('active');
+        }
+
+        function selectTopic(topicKey) {
+            currentTopic = topicKey;
+            currentData = db[topicKey];
+            document.getElementById('display-topic-title').innerText = topicTitles[topicKey];
+            
+            // Reset state
+            fcIndex = 0;
+            score = 0;
+            document.getElementById('score').innerText = score;
+            
+            // Show Study Screen
+            document.getElementById('home-screen').classList.remove('active');
+            document.getElementById('study-screen').classList.add('active');
+            
+            // Default to summary tab
+            switchMode('summary');
+        }
+
+        function switchMode(mode) {
+            // Update Tab Buttons
+            document.getElementById('btn-summary').classList.remove('active');
+            document.getElementById('btn-flashcard').classList.remove('active');
+            document.getElementById('btn-exam').classList.remove('active');
+            document.getElementById('btn-' + mode).classList.add('active');
+
+            // Update Sections
+            document.getElementById('section-summary').classList.remove('active');
+            document.getElementById('section-flashcard').classList.remove('active');
+            document.getElementById('section-exam').classList.remove('active');
+            document.getElementById('section-' + mode).classList.add('active');
+
+            if (mode === 'summary') { loadSummary(); }
+            if (mode === 'flashcard') { loadFlashcard(fcIndex); }
+            if (mode === 'exam') { loadExamQuestion(); }
+        }
+
+        // ================= SUMMARY LOGIC =================
+        function loadSummary() {
+            const container = document.getElementById('summary-content');
+            container.innerHTML = "";
+            if (currentData.length === 0) return;
+
+            currentData.forEach((item, index) => {
+                let div = document.createElement('div');
+                div.className = 'summary-item';
+                div.innerHTML = `
+                    <div class="summary-q">${index + 1}. ${item.soalan}</div>
+                    <div class="summary-a">${item.jawapan}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // ================= FLASHCARD LOGIC =================
+        function loadFlashcard(index) {
+            if (currentData.length === 0) return;
+            const cardData = currentData[index];
+            document.getElementById('fc-counter').innerText = `(${index + 1}/${currentData.length})`;
+            document.getElementById('fc-question').innerText = cardData.soalan;
+            document.getElementById('fc-answer').innerText = cardData.jawapan;
+            document.getElementById('flashcard').classList.remove('flipped');
+        }
+
+        function flipCard() { document.getElementById('flashcard').classList.toggle('flipped'); }
+        function nextCard() { fcIndex = (fcIndex + 1) % currentData.length; loadFlashcard(fcIndex); }
+        function prevCard() { fcIndex = (fcIndex - 1 + currentData.length) % currentData.length; loadFlashcard(fcIndex); }
+
+        // ================= EXAM LOGIC =================
+        function loadExamQuestion() {
+            if (currentData.length === 0) return;
+            isAnswered = false;
+            document.getElementById('exam-feedback').innerText = "";
+            document.getElementById('exam-next-btn').style.display = "none";
+            
+            // 1. Pilih soalan rawak dari topik ini sahaja
+            let qIndex = Math.floor(Math.random() * currentData.length);
+            let currentQ = currentData[qIndex];
+            
+            document.getElementById('exam-question').innerText = currentQ.soalan;
+
+            // 2. Ambil jawapan betul
+            let correctAns = currentQ.jawapan;
+
+            // 3. Ambil 2 jawapan salah dari KESELURUHAN silibus
+            let wrongAnswersPool = getAllWrongAnswers(correctAns);
+            
+            // 4. Susun 3 pilihan jawapan secara rawak
+            let options = [
+                {text: correctAns, isCorrect: true},
+                {text: wrongAnswersPool[0], isCorrect: false},
+                {text: wrongAnswersPool[1], isCorrect: false}
+            ];
+            shuffleArray(options);
+
+            // 5. Render butang pilihan
+            const optionsContainer = document.getElementById('exam-options');
+            optionsContainer.innerHTML = "";
+            
+            options.forEach((opt) => {
+                let btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt.text;
+                btn.onclick = function() { checkAnswer(this, opt.isCorrect, options); };
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(btnElement, isCorrect, allOptionsData) {
+            if(isAnswered) return;
+            isAnswered = true;
+
+            const allBtns = document.querySelectorAll('.option-btn');
+            
+            allBtns.forEach(b => {
+                b.disabled = true;
+                let correctText = allOptionsData.find(o => o.isCorrect).text;
+                if(b.innerText === correctText) { b.classList.add('correct'); }
+            });
+            
+            if(isCorrect) {
+                document.getElementById('exam-feedback').innerText = "Tepat sekali! ✔️";
+                document.getElementById('exam-feedback').style.color = "#00b894";
+                score++;
+                document.getElementById('score').innerText = score;
+            } else {
+                btnElement.classList.add('wrong');
+                document.getElementById('exam-feedback').innerText = "Salah. Sila semak jawapan yang betul di atas. ❌";
+                document.getElementById('exam-feedback').style.color = "#d63031";
+            }
+            
+            document.getElementById('exam-next-btn').style.display = "flex";
+        }
+    </script>
+</body>
+</html>
